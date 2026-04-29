@@ -40,8 +40,3 @@ Simply open `index.html` in any modern browser.
 
 Click **"PLAY with $FRANC"** to activate:
 - Next bonus indicator displayed in-game
-
-
-## 📄 License
-
-MIT — free to use and modify.
