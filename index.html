@@ -62,17 +62,20 @@ body{background:#060410;overflow:hidden;width:100vw;height:100vh;font-family:'Fr
 <div id="joyStick"></div>
 <button id="modeToggle" onclick="toggleInputMode()">Joystick</button>
 <div id="panel">
-  <h2>&#x2693; Hormuz &#x1F438;</h2>
-  <p>
-    &#x1F425; 1pt &#xB7; &#x1F424; 2pts &#xB7; &#x1F423; 3pts<br>
-    <span style="color:#FFD700">30 pts = next level &bull; 10 levels</span><br>
-    &#x1F36C; Immunity 5s (Lv.7+) &#xB7; &#x1F988; Sharks (Lv.7+)<br>
-    &#x1F3DD; Islands (Lv.8+) &#xB7; Machine gun (Lv.6+)<br>
-    <span style="color:#ff9966">Lv.10: Smart pirates &bull; Lv.11: SUDDEN DEATH!</span>
-  </p>
-  <div id="francStatus" style="margin:8px 0;padding:8px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.3);border-radius:10px;font-size:11px;color:#c9aaee;display:none"></div>
-  <button class="btn" id="btnPlay" onclick="startGame()" disabled style="opacity:0.5">&#x23F3; Loading...</button>
-  <button class="btn" id="btnWallet" onclick="openWallet()" style="background:linear-gradient(135deg,#7c3aed,#4c1d95);margin-top:6px;display:none">&#x1F48E; Connect Wallet &rarr; 10 lives</button>
+  <h2 style="font-size:32px;margin-bottom:2px">&#x2693; HORMUZ</h2>
+  <p style="font-size:12px;color:#c9aaee;margin-bottom:14px">Save drowning chicks &amp; survive the river!</p>
+
+  <button class="btn" id="btnPlay" onclick="startGame()" disabled style="opacity:0.5;font-size:18px;padding:16px">&#x23F3; Loading...</button>
+
+  <div id="francStatus" style="margin:10px 0 4px;padding:12px 14px;background:rgba(120,40,20,0.5);border:1.5px solid rgba(255,140,60,0.5);border-radius:14px;font-size:13px;font-weight:bold;display:none;cursor:pointer" onclick="openWallet()"></div>
+
+  <button class="btn" id="btnWallet" onclick="openWallet()" style="background:linear-gradient(135deg,#7c3aed,#4c1d95);margin-top:6px;display:none;font-size:14px">&#x1F48E; TAP TO UNLOCK 10 LIVES</button>
+
+  <div style="margin-top:12px;padding:10px 12px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.25);border-radius:12px;font-size:11px;text-align:left">
+    <div style="color:#a855f7;font-weight:bold;margin-bottom:6px">&#x1F48E; $FRANC RULES</div>
+    <div style="color:#ff8888">&#x1F90D; Without $FRANC: <b style="color:#fff">1 life</b> only</div>
+    <div style="color:#a3e635;margin-top:4px">&#x1F49A; Holding $FRANC: <b style="color:#FFD700">10 lives</b> + bonuses</div>
+  </div>
 </div>
 <script>
 const C=document.getElementById('gc'),ctx=C.getContext('2d');
@@ -132,7 +135,7 @@ function updateUI(){
   bs.style.opacity=shCD>0?'0.4':'1';
   if(shOn)bs.classList.add('active');else bs.classList.remove('active');
 }
-function iB(){return{x:W()/2-25,y:H()-160,w:50,h:55,inv:0,sink:0};}
+function iB(){return{x:W()/2-30,y:H()-180,w:60,h:79,inv:0,sink:0};}
 
 function startGame(){
   nextFrancBonus=100;
@@ -255,24 +258,24 @@ function spawnO(){
   const t=types[Math.floor(Math.random()*types.length)];
   const wb=nWobble(lv);
   if(t==='chick'){
-    const r2=Math.random();let sz='s',pts=1,sw=13,sh=14;
-    if(r2<0.2){sz='l';pts=3;sw=19;sh=20;}else if(r2<0.53){sz='m';pts=2;sw=16;sh=17;}
+    const r2=Math.random();let sz='s',pts=1,sw=16,sh=17;
+    if(r2<0.2){sz='l';pts=3;sw=23;sh=24;}else if(r2<0.53){sz='m';pts=2;sw=19;sh=20;}
     objs.push({type:'chick',x:rx(),y:-sh,w:sw,h:sh,speed:spd*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb});
   }
-  else if(t==='rock'){const big=Math.random()<0.3,rw2=big?27:18,rh=big?23:17;objs.push({type:'rock',x:rx(),y:-rh,w:rw2,h:rh,speed:spd,wb});}
+  else if(t==='rock'){const big=Math.random()<0.3,rw2=big?32:22,rh=big?28:20;objs.push({type:'rock',x:rx(),y:-rh,w:rw2,h:rh,speed:spd,wb});}
   else if(t==='trunk'){
-    const vertical=Math.random()<0.4,len=34+Math.random()*24,thick=10+Math.random()*4;
+    const vertical=Math.random()<0.4,len=41+Math.random()*29,thick=12+Math.random()*5;
     if(vertical)objs.push({type:'trunk',x:rx(),y:-len,w:thick,h:len,speed:spd,ang:0,vertical:true,mossPts:gMoss(),branches:[],wb});
     else objs.push({type:'trunk',x:RL()+10+Math.random()*(RW()-len-20),y:-thick,w:len,h:thick,speed:spd,ang:(Math.random()-.5)*.3,vertical:false,mossPts:gMoss(),branches:gBr(len),wb});
   }
-  else if(t==='croco'){const sc=0.8+Math.random()*.4;objs.push({type:'croco',x:rx(),y:-46*sc,w:16*sc,h:41*sc,speed:spd,dir:Math.random()<.5?-1:1,sway:Math.random()*Math.PI*2,sc,tail:Math.random()*Math.PI*2,wb});}
-  else if(t==='mine'){const vx=(Math.random()-.5)*2.2;objs.push({type:'mine',x:rx(),y:-14,w:14,h:14,speed:spd*.5,bob:Math.random()*Math.PI*2,vx,zig:0,zigP:45+Math.random()*60,dead:false,wb});}
-  else if(t==='enemy')objs.push({type:'enemy',x:rx(),y:-60,w:50,h:55,speed:spd*.75,wb});
-  else if(t==='homing_enemy'){const smart=lv>=10;objs.push({type:'homing_enemy',x:rx(),y:-60,w:50,h:55,speed:spd*.6,smart,shootTimer:40+Math.floor(Math.random()*40),vx:0,vy:spd*.6,hp:3,wb:smart?null:wb});}
-  else if(t==='whirlpool')objs.push({type:'whirlpool',x:rx(),y:-40,w:40,h:40,speed:spd*.28,rot:0,wb});
-  else if(t==='candy')objs.push({type:'candy',x:rx(),y:-14,w:14,h:14,speed:spd*.55,bob:Math.random()*Math.PI*2});
-  else if(t==='shark'){const side=Math.random()<0.5,sx=side?ri+mg:ri+rw-mg-40;objs.push({type:'shark',x:sx,y:-30,w:20,h:30,speed:spd*.8,dir:side?1:-1,sway:Math.random()*Math.PI*2,wb});}
-  else if(t==='island'){const iW=27+Math.random()*20,iH=40+Math.random()*30,ix=ri+rw*.5-iW*.5+(Math.random()-.5)*rw*.25;objs.push({type:'island',x:ix,y:-iH,w:iW,h:iH,speed:spd*.4,trees:Math.floor(2+Math.random()*3)});}
+  else if(t==='croco'){const sc=0.8+Math.random()*.4;objs.push({type:'croco',x:rx(),y:-55*sc,w:19*sc,h:49*sc,speed:spd,dir:Math.random()<.5?-1:1,sway:Math.random()*Math.PI*2,sc,tail:Math.random()*Math.PI*2,wb});}
+  else if(t==='mine'){const vx=(Math.random()-.5)*2.2;objs.push({type:'mine',x:rx(),y:-17,w:17,h:17,speed:spd*.5,bob:Math.random()*Math.PI*2,vx,zig:0,zigP:45+Math.random()*60,dead:false,wb});}
+  else if(t==='enemy')objs.push({type:'enemy',x:rx(),y:-72,w:60,h:66,speed:spd*.75,wb});
+  else if(t==='homing_enemy'){const smart=lv>=10;objs.push({type:'homing_enemy',x:rx(),y:-72,w:60,h:66,speed:spd*.6,smart,shootTimer:40+Math.floor(Math.random()*40),vx:0,vy:spd*.6,hp:3,wb:smart?null:wb});}
+  else if(t==='whirlpool')objs.push({type:'whirlpool',x:rx(),y:-48,w:48,h:48,speed:spd*.28,rot:0,wb});
+  else if(t==='candy')objs.push({type:'candy',x:rx(),y:-17,w:17,h:17,speed:spd*.55,bob:Math.random()*Math.PI*2});
+  else if(t==='shark'){const side=Math.random()<0.5,sx=side?ri+mg:ri+rw-mg-40;objs.push({type:'shark',x:sx,y:-36,w:24,h:36,speed:spd*.8,dir:side?1:-1,sway:Math.random()*Math.PI*2,wb});}
+  else if(t==='island'){const iW=32+Math.random()*24,iH=48+Math.random()*36,ix=ri+rw*.5-iW*.5+(Math.random()-.5)*rw*.25;objs.push({type:'island',x:ix,y:-iH,w:iW,h:iH,speed:spd*.4,trees:Math.floor(2+Math.random()*3)});}
 }
 function gMoss(){const p=[];for(let i=0;i<6;i++)p.push({x:Math.random(),y:Math.random(),r:2+Math.random()*4});return p;}
 function gBr(len){return[{x:len*.25+(Math.random()-.5)*10,side:Math.random()<.5?-1:1,l:12+Math.random()*14},{x:len*.65+(Math.random()-.5)*10,side:Math.random()<.5?-1:1,l:10+Math.random()*12}];}
@@ -411,7 +414,7 @@ function checkCols(){
 function update(){
   if(!S||!S.running)return;
   frN++;handleInput();
-  scY+=0.6+getLv()*.14;
+  scY+=0.3+getLv()*.07;
   updateMines();updateHomingEnemies();updateWhirlpools();updateNarrowPassages();
   if(shOn){shTimer--;if(shTimer<=0){shOn=false;shCD=SH_CD;}}
   if(shCD>0)shCD--;
@@ -551,7 +554,14 @@ function dCroco(o){
     ctx.fillStyle='#4a8e22';ctx.beginPath();ctx.ellipse(0,0,o.w/2,o.h/2,0,0,Math.PI*2);ctx.fill();
   }
   // water ripple around croc
-  ctx.strokeStyle='rgba(80,180,255,0.2)';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(0,0,o.w*.5,o.h*.3,0,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='rgba(80,180,255,0.25)';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(0,0,o.w*.55,o.h*.3,0,0,Math.PI*2);ctx.stroke();
+  // immersion: water overlay covers lower 45% of croc (head going under)
+  const immH=o.h*0.45;
+  ctx.fillStyle='rgba(14,74,138,0.62)';
+  ctx.fillRect(-o.w*0.9, o.h*0.05, o.w*1.8, immH);
+  // second lighter wave band
+  ctx.fillStyle='rgba(30,100,180,0.28)';
+  ctx.fillRect(-o.w*0.9, o.h*0.05, o.w*1.8, immH*0.35);
   ctx.restore();
 }
 function dMine(o){
@@ -717,19 +727,21 @@ function updateFrancUI(){
   const statusEl=document.getElementById('francStatus');
   const walletBtn=document.getElementById('btnWallet');
   const playBtn=document.getElementById('btnPlay');
-  if(!statusEl)return;
   if(hasFranc){
-    statusEl.style.display='block';
-    statusEl.style.borderColor='rgba(163,230,53,0.4)';
-    statusEl.innerHTML='<span style="color:#a3e635">&#x2714; $FRANC detected — 10 lives unlocked!</span><br><span style="color:#FFD700;font-size:10px">+1 life every 100 pts in-game</span>';
+    if(statusEl){
+      statusEl.style.display='none'; // hide the lock box when connected
+    }
     if(walletBtn)walletBtn.style.display='none';
   } else {
-    statusEl.style.display='block';
-    statusEl.style.borderColor='rgba(180,100,255,0.3)';
-    statusEl.innerHTML='<span style="color:#ff8888">&#x2764;&#xFE0F; Without $FRANC: 1 life only</span><br><span style="color:#c9aaee;font-size:10px">Connect wallet to unlock 10 lives + bonuses</span>';
-    if(walletBtn)walletBtn.style.display='block';
+    if(statusEl){
+      statusEl.style.display='block';
+      statusEl.style.background='rgba(120,40,20,0.5)';
+      statusEl.style.borderColor='rgba(255,140,60,0.6)';
+      statusEl.innerHTML='<span style="font-size:20px">&#x1F512;</span> <span style="color:#FFD700;font-size:14px;font-family:Bangers,cursive;letter-spacing:2px">TAP TO UNLOCK 10 LIVES</span><br><span style="color:#aaa;font-size:10px;font-weight:normal">Wallet not connected</span>';
+    }
+    if(walletBtn)walletBtn.style.display='none'; // lock box acts as the button
   }
-  if(playBtn){playBtn.disabled=false;playBtn.style.opacity='1';playBtn.textContent='&#x25B6; PLAY';}
+  if(playBtn){playBtn.disabled=false;playBtn.style.opacity='1';playBtn.innerHTML='&#x25B6; PLAY';}
 }
 
 async function detectFranc(){
