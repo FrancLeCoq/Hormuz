@@ -69,7 +69,7 @@ body{background:radial-gradient(ellipse at 50% 20%,#091428 0%,#040208 80%);overf
   <div class="bar-lbl" id="barLbl">0 / 30 pts &rarr; Niv 2</div>
 </div>
 <div id="actionBtns">
-  <div class="action-btn" id="btnFire" ontouchstart="startFiring()" ontouchend="stopFiring()">&#x1F52B;<br>Mitraille</div>
+  <div class="action-btn" id="btnFire" ontouchstart="startFiring();window._firePressed=true;" ontouchend="stopFiring()">&#x1F52B;<br>Mitraille</div>
 </div>
 <button id="soundBtn" onclick="toggleSound()" style="position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:8;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.2);border-radius:20px;color:#fff;font-size:16px;padding:4px 12px;cursor:pointer;touch-action:manipulation">🔊</button>
 <div id="joyBase"></div>
@@ -117,13 +117,16 @@ const WEATHER_MAX=4;        // max 4 occurrences per day cycle
 function gameHour(){
   // 1 min real = 1 hour game. Start at noon = 720 game-minutes = 720 real seconds
   if(!S)return 12;
-  return ((S.gameSeconds + 720) % 1440) / 60;  // 0-24
+  return ((S.gameSeconds*3 + 720) % 1440) / 60;  // 0-24, x3 speed
 }
 function gameTimeStr(){
   const h=gameHour();
-  const hh=Math.floor(h)%24;
+  let hh=Math.floor(h)%24;
   const mm=Math.floor((h%1)*60);
-  return (hh<10?'0':'')+hh+'h'+(mm<10?'0':'')+mm;
+  const ampm=hh>=12?'PM':'AM';
+  if(hh===0)hh=12;
+  else if(hh>12)hh-=12;
+  return hh+':'+(mm<10?'0':'')+mm+' '+ampm;
 }
 function isDaylight(){
   const h=gameHour()%24;
@@ -185,7 +188,7 @@ function updateUI(){
     document.getElementById('barLbl').textContent=(S.score%PTS_LVL)+' / '+PTS_LVL+' pts → Niv '+(lv<MAX_LVL?lv+1:'MAX');
   }
   const ab=document.getElementById('actionBtns');
-  if(isMob&&lv>=6&&S.running)ab.style.display='flex';else ab.style.display='none';
+  if(isMob&&lv>=4&&S.running)ab.style.display='flex';else ab.style.display='none';
 
 }
 function iB(){return{x:W()/2-30,y:H()-180,w:60,h:79,inv:0,sink:0};}
@@ -223,7 +226,7 @@ function loseL(){
   if(boat.inv>0||boat.sink>0)return;
   playSound('loselife');S.lives--;updateUI();
   if(S.lives<=0){gameOver();return;}
-  boat.sink=70;boat.inv=0;
+  boat.sink=70;boat.inv=0; // inv granted after respawn (5s = INV frames)
   spinOn=true;spinA=0;spinSp=0.38;spinT=55;
   shk=10;shkD=22;bulls=[];
   setTimeout(()=>{if(!S||!S.running)return;boat=iB();boat.inv=INV;spinOn=false;spinA=0;},1400);
@@ -255,12 +258,17 @@ C.addEventListener('touchmove',e=>{e.preventDefault();const t=e.changedTouches[0
 C.addEventListener('touchend',e=>{e.preventDefault();if(inputMode==='joystick'){joyAct=false;joyDX=0;joyDY=0;const c=jC(),js=document.getElementById('joyStick');js.style.left=c.x+'px';js.style.top=c.y+'px';}else dragAct=false;},{passive:false});
 
 // shield removed
-function startFiring(){if(getLv()>=6&&S&&S.running)fireOn=true;}
+function startFiring(){if(getLv()>=4&&S&&S.running)fireOn=true;}
 function stopFiring(){fireOn=false;}
 function doFire(){
-  if(!S||!S.running||fireCD>0)return;
+  if(!S||!S.running||fireCD>0||getLv()<4)return;
+  const lv=getLv();
+  // Lv 4-5: single shot (manual trigger only, big cooldown)
+  // Lv 6+: machine gun (fast repeat)
+  const isMachineGun=lv>=6;
+  const cooldown=isMachineGun?FIRE_RATE:40; // single shot = 40 frame cooldown
+  if(!isMachineGun&&!window._firePressed)return; // single shot: only on keydown, not held
   const bx=boat.x+boat.w/2,by=boat.y;
-  // Find nearest targetable enemy (homing, enemy, croco, shark)
   const shootable=['homing_enemy','enemy','croco','shark'];
   let tgt=null,md=9999;
   for(const o of objs){
@@ -270,11 +278,12 @@ function doFire(){
   }
   const ang=tgt?Math.atan2(tgt.y+tgt.h/2-by,tgt.x+tgt.w/2-bx):-Math.PI/2;
   pBulls.push({x:bx,y:by,vx:Math.cos(ang)*11,vy:Math.sin(ang)*11,life:90,r:4});
-  fireCD=FIRE_RATE;spawnB(bx,by,'#ffdd00',1);playSound('shoot');
+  fireCD=cooldown;spawnB(bx,by,'#ffdd00',1);playSound('shoot');
+  window._firePressed=false; // consume single-shot press
 }
 document.addEventListener('keydown',e=>{
   keys[e.key]=true;['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)&&e.preventDefault();
-  if(e.key===' '||e.code==='Space'){e.preventDefault();fireOn=true;}
+  if(e.key===' '||e.code==='Space'){e.preventDefault();fireOn=true;window._firePressed=true;}
 
 });
 document.addEventListener('keyup',e=>{keys[e.key]=false;if(e.key===' '||e.code==='Space')fireOn=false;});
@@ -309,7 +318,7 @@ function spawnO(){
   const lv=getLv(),ri=RL(),rw=RW();
   const mg=Math.floor(rw*0.1);
   const rx=()=>ri+mg+Math.random()*(rw-mg*2);
-  const spd=(1.3+lv*0.35)*(0.85+Math.random()*0.5)*0.75;
+  const spd=(1.3+lv*0.35)*(0.85+Math.random()*0.5)*0.675;
   const types=['chick','chick','chick','rock','trunk','croco'];
   if(lv>=2)types.push('mine');
   if(lv>=3)types.push('croco','rock');
@@ -544,8 +553,8 @@ function checkCols(){
 function update(){
   if(!S||!S.running)return;
   frN++;handleInput();
-  if(frN%60===0){setEngineVolume(1);updateAmbientSound();}
-  scY+=(isMob?(0.085+getLv()*.020):(0.169+getLv()*.040));
+  if(frN%60===0){updateAmbientSound();}
+  scY+=(isMob?(0.077+getLv()*.018):(0.152+getLv()*.036));
   updateMines();updateHomingEnemies();updateWhirlpools();updateNarrowPassages();updateNewObstacles();
   if(fireCD>0)fireCD--;
   if(fireOn)doFire();
@@ -749,7 +758,7 @@ function drawO(o){
   }
   ctx.globalAlpha=1;
   // HP bar only from level 6 (when machine gun unlocked)
-  if(o.hp!==undefined&&o.maxHp&&o.type!=='homing_enemy'&&getLv()>=6){
+  if(o.hp!==undefined&&o.maxHp&&o.type!=='homing_enemy'&&getLv()>=4){
     const bw=o.w+8,bh=4,bx=o.x-4,by=o.y-8;
     ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(bx,by,bw,bh);
     const pct=o.hp/o.maxHp;
@@ -975,7 +984,7 @@ function drawHUD(){
   // Night vignette handled by sky overlay
   const lv=getLv();
   ctx.fillStyle=isMS()?'rgba(255,60,60,.8)':'rgba(255,255,255,.55)';ctx.font='bold 11px monospace';ctx.textAlign='left';ctx.fillText(isMS()?'MORT SUBITE':'LVL '+lv,RL()+6,H()-22);
-  if(!isMob&&S&&S.running){ctx.fillStyle='rgba(0,200,255,0.5)';ctx.font='9px monospace';ctx.fillText('[Space] Fire',RL()+6,H()-8);}
+  if(!isMob&&S&&S.running&&getLv()>=4){const lv2=getLv();ctx.fillStyle='rgba(0,200,255,0.5)';ctx.font='9px monospace';ctx.fillText(lv2>=6?'[Space] Machine gun':'[Space] Fire',RL()+6,H()-8);}
   if(hasFranc){ctx.fillStyle='rgba(163,230,53,0.7)';ctx.font='9px monospace';ctx.textAlign='right';ctx.fillText('$FRANC next bonus: '+nextFrancBonus+'pts',RR()-6,H()-8);}
   // Combo counter hint
   if(comboCount>0&&comboMult===1){
@@ -1007,28 +1016,11 @@ function initAudio(){
     // Master gain
     const master=audioCtx.createGain();master.gain.value=0.55;master.connect(audioCtx.destination);
     window._masterGain=master;
-    startEngineHum();
     startAmbient();
   }catch(e){audioCtx=null;}
 }
 
-function startEngineHum(){
-  if(!audioCtx)return;
-  engineGain=audioCtx.createGain();engineGain.gain.value=0;
-  engineGain.connect(window._masterGain);
-  // Two oscillators for a boat engine rumble
-  const o1=audioCtx.createOscillator();o1.type='sawtooth';o1.frequency.value=68;
-  const o2=audioCtx.createOscillator();o2.type='square';o2.frequency.value=72;
-  const f1=audioCtx.createBiquadFilter();f1.type='lowpass';f1.frequency.value=160;
-  o1.connect(f1);o2.connect(f1);f1.connect(engineGain);
-  o1.start();o2.start();
-  engineNode=[o1,o2];
-}
-
-function setEngineVolume(v){
-  if(!engineGain)return;
-  engineGain.gain.setTargetAtTime(soundEnabled?v*0.12:0,audioCtx.currentTime,0.1);
-}
+// engine hum removed
 
 function startAmbient(){
   if(!audioCtx)return;
@@ -1049,12 +1041,7 @@ function updateAmbientSound(){
   const isRaining=weather&&weather.type==='rain'&&(weather.intensity||0)>0;
   const targetGain=soundEnabled?(isRaining?0.22*weather.intensity+0.06:0.06):0;
   ambientGain.gain.setTargetAtTime(targetGain,audioCtx.currentTime,0.3);
-  // Night crickets: engine pitch shifts at night
-  if(engineNode&&isDaylight&&typeof isDaylight==='function'){
-    const nightFactor=isDaylight()?1:0.85;
-    engineNode[0].frequency.setTargetAtTime(68*nightFactor,audioCtx.currentTime,1);
-    engineNode[1].frequency.setTargetAtTime(72*nightFactor,audioCtx.currentTime,1);
-  }
+
 }
 
 // One-shot sounds
@@ -1085,14 +1072,21 @@ function playSound(type){
       src.connect(f);f.connect(g);g.connect(mg);src.start(now);
     }
     else if(type==='chick'){
-      // Cute pickup chirp
-      const freqs=[800,1000,1200,900];
-      freqs.forEach((freq,i)=>{
+      // Fun ascending chirp — pitch depends on pts stored in last pickup
+      const pts=window._lastChickPts||1;
+      const base=600+pts*120;
+      // Two quick ascending notes + vibrato finish
+      [[base,0],[base*1.25,0.05],[base*1.5,0.10]].forEach(([freq,dt])=>{
         const o=ac.createOscillator(),g=ac.createGain();
         o.type='sine';o.frequency.value=freq;
-        const t=now+i*0.04;
-        g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.18,t+0.015);g.gain.exponentialRampToValueAtTime(0.001,t+0.06);
-        o.connect(g);g.connect(mg);o.start(t);o.stop(t+0.06);
+        const t=now+dt;
+        // slight vibrato
+        const lfo=ac.createOscillator();lfo.frequency.value=18;lfo.type='sine';
+        const lfoG=ac.createGain();lfoG.gain.value=freq*0.04;
+        lfo.connect(lfoG);lfoG.connect(o.frequency);
+        g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.22,t+0.012);
+        g.gain.exponentialRampToValueAtTime(0.001,t+0.09);
+        o.connect(g);g.connect(mg);lfo.start(t);o.start(t);o.stop(t+0.09);lfo.stop(t+0.09);
       });
     }
     else if(type==='golden_chick'){
@@ -1165,7 +1159,6 @@ function playSound(type){
 // Sound toggle button
 function toggleSound(){
   soundEnabled=!soundEnabled;
-  if(engineGain)engineGain.gain.setTargetAtTime(soundEnabled?0.12:0,audioCtx.currentTime,0.1);
   if(ambientGain)ambientGain.gain.setTargetAtTime(soundEnabled?0.08:0,audioCtx.currentTime,0.3);
   const btn=document.getElementById('soundBtn');
   if(btn)btn.textContent=soundEnabled?'🔊':'🔇';
