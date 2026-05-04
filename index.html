@@ -2,126 +2,239 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>⚓ HORMUZ</title>
+<title>Hormuz Enhanced</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Fredoka+One&display=swap');
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:radial-gradient(ellipse at 50% 0%,#0a1428 0%,#02050f 75%);overflow:hidden;width:100vw;height:100vh;font-family:'Fredoka One',cursive}
-#gc{position:fixed;inset:0;z-index:1}
-#ui{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:10px 14px;z-index:5;pointer-events:none;background:linear-gradient(to bottom,rgba(5,2,20,0.92),transparent)}
-.ui-left{display:flex;flex-direction:column;align-items:flex-start}
-.ui-right{display:flex;flex-direction:column;align-items:flex-end}
-.ui-label{font-size:9px;color:#a78bca;letter-spacing:2px;text-transform:uppercase;font-family:'Fredoka One',cursive}
-.ui-val{font-size:17px;font-family:'Bangers',cursive;letter-spacing:2px;color:#FFD700}
-.ui-score{font-size:28px;font-family:'Bangers',cursive;letter-spacing:3px;color:#FFD700;text-shadow:0 0 12px rgba(255,215,0,0.5)}
-.ui-level{font-size:24px;font-family:'Bangers',cursive;letter-spacing:2px;color:#cc88ff;text-shadow:0 0 10px rgba(180,80,255,0.5)}
-.ui-lives{display:flex;align-items:center;gap:4px}
-.ui-heart{font-size:22px;filter:drop-shadow(0 0 6px rgba(255,60,60,0.8));line-height:1}
-.ui-lives-count{font-size:22px;font-family:'Bangers',cursive;color:#ff4444;letter-spacing:1px;text-shadow:0 0 8px rgba(255,60,60,0.6)}
-#msg{position:fixed;top:38%;left:50%;transform:translate(-50%,-50%);font-size:62px;color:#fff;text-shadow:0 0 40px #fff,0 0 80px rgba(255,255,255,0.4);opacity:0;transition:.25s;z-index:15;pointer-events:none;white-space:nowrap;font-family:'Bangers',cursive;letter-spacing:6px}
-#msg.show{opacity:1}
-#msg.gameover{color:#cc0000;animation:bpulse .5s ease-in-out infinite alternate}
-@keyframes bpulse{0%{color:#880000;transform:translate(-50%,-50%) scale(0.93)}100%{color:#ff0000;transform:translate(-50%,-50%) scale(1.08)}}
-#levelup{position:fixed;top:28%;left:50%;transform:translate(-50%,-50%);font-size:38px;color:#FFD700;opacity:0;transition:.3s;z-index:15;pointer-events:none;font-family:'Bangers',cursive;letter-spacing:4px}
-#levelup.show{opacity:1}
-#panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;max-height:92vh;overflow-y:auto;background:linear-gradient(160deg,rgba(8,2,22,0.99),rgba(20,5,50,0.99));color:#fff;padding:24px 20px;border-radius:26px;z-index:20;border:2px solid rgba(140,80,255,0.5);box-shadow:0 0 80px rgba(80,20,180,0.6),0 0 200px rgba(40,0,120,0.3);text-align:center}
-#panel.hidden{display:none!important}
-#panel h2{font-size:36px;margin-bottom:0;letter-spacing:5px;text-shadow:0 0 30px rgba(255,215,0,0.8),0 0 60px rgba(255,165,0,0.4)}
-#panel p{font-size:12px;color:#c9aaee;margin-bottom:14px}
-.btn{width:100%;padding:12px;border:none;border-radius:14px;font-size:15px;background:linear-gradient(135deg,#16a34a,#15803d);cursor:pointer;color:#fff;margin-top:6px;font-family:'Bangers',cursive;letter-spacing:2px;transition:transform .1s,box-shadow .1s}
-.btn:active{opacity:0.8;transform:scale(0.97)}
-#lvlbar{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);z-index:5;width:240px;pointer-events:none}
-.bar-bg{background:rgba(0,0,0,0.6);border-radius:20px;height:10px;border:1px solid rgba(180,100,255,0.3);overflow:hidden}
-.bar-fill{height:100%;background:linear-gradient(90deg,#9333ea,#f59e0b,#FFD700);border-radius:20px;transition:width .4s;box-shadow:0 0 8px rgba(168,85,247,0.6)}
-.bar-lbl{text-align:center;font-size:9px;color:#a78bca;margin-top:2px}
-#actionBtns{position:fixed;left:10px;bottom:90px;z-index:8;display:none;flex-direction:column;gap:8px;align-items:center}
-.action-btn{width:60px;height:60px;border-radius:50%;border:3px solid;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center;font-family:'Bangers',cursive;font-size:12px;line-height:1.1;text-align:center;color:#fff}
-#btnFire{background:rgba(180,30,30,0.6);border-color:rgba(255,80,80,0.8)}
-#joyBase{position:fixed;left:14px;bottom:78px;width:136px;height:136px;border-radius:50%;background:rgba(168,85,247,0.1);border:2.5px solid rgba(168,85,247,0.45);display:none;touch-action:none;z-index:8}
-#joyStick{position:fixed;width:54px;height:54px;border-radius:50%;background:radial-gradient(circle at 35% 35%,rgba(220,170,255,0.95),rgba(140,60,220,0.85));border:2.5px solid rgba(240,200,255,0.9);display:none;transform:translate(-50%,-50%);pointer-events:none;z-index:9}
-#modeToggle{position:fixed;bottom:12px;left:10px;z-index:8;display:none;background:rgba(28,8,62,0.88);border:1.5px solid rgba(168,85,247,0.5);border-radius:16px;padding:5px 10px;color:#c084fc;font-size:10px;font-family:'Fredoka One',cursive;cursor:pointer;touch-action:manipulation}
+body{margin:0;overflow:hidden;background:#000;font-family:sans-serif}
+canvas{display:block}
 </style>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-<canvas id="gc"></canvas>
-<!-- UI identique -->
-<div id="ui"> ... (même que avant) </div>
-<div id="msg"></div>
-<div id="levelup"></div>
-<div id="lvlbar"> ... </div>
-<div id="actionBtns"> ... </div>
-<div id="joyBase"></div>
-<div id="joyStick"></div>
-<button id="modeToggle" onclick="toggleInputMode()">Joystick</button>
-
-<div id="panel">
-  <h2 style="font-size:36px;margin-bottom:0;letter-spacing:5px;text-shadow:0 0 30px rgba(255,215,0,0.8),0 0 60px rgba(255,165,0,0.4)">&#x2693; HORMUZ</h2>
-  <p style="font-size:12px;color:#c9aaee;margin-bottom:14px">Save drowning chicks &amp; survive the river!</p>
-  <button class="btn" id="btnPlay" onclick="startGame()" disabled style="opacity:0.5;font-size:20px;padding:18px;letter-spacing:3px;border-radius:16px;box-shadow:0 0 30px rgba(22,163,74,0.5)">&#x23F3; Loading...</button>
-  <!-- reste du panel identique -->
-</div>
+<canvas id="c"></canvas>
 
 <script>
-// ==================== TON CODE COMPLET AVEC LE FIX ====================
+const c=document.getElementById("c");
+const ctx=c.getContext("2d");
+function resize(){c.width=innerWidth;c.height=innerHeight}
+resize(); addEventListener("resize",resize);
 
-const C=document.getElementById('gc'),ctx=C.getContext('2d');
-function resize(){C.width=innerWidth;C.height=innerHeight;}
-addEventListener('resize',resize);resize();
+const W=()=>c.width, H=()=>c.height;
+const RL=()=>W()*0.2, RR=()=>W()*0.8;
 
-const W=()=>C.width,H=()=>C.height;
-const RL=()=>Math.floor(W()*0.17),RR=()=>Math.floor(W()*0.83),RW=()=>RR()-RL();
+let boat={x:W()/2,y:H()-120,slowTimer:0};
+let objs=[];
+let score=0, lives=3;
 
-let MAX_LIVES=1;
-let hasFranc=false;
-let comboCount=0,comboMult=1,comboTimer=0;
-let consecutiveChicks=0;
-let weatherType='',weatherDuration=0,weatherTimer=0;
-let slowTimer=0;
+let combo=0, comboMult=1, comboTimer=0;
+let weather="clear", weatherTimer=300;
+let currentForce=0;
+let screenShake=0;
 
-// ... (tout le reste de ton code jusqu'à detectFranc reste identique) ...
+function rand(a,b){return Math.random()*(b-a)+a}
+function dist(a,b,c,d){return Math.hypot(a-c,b-d)}
 
-// ====================== FIX DU BOUTON LOADING ======================
-async function detectFranc(){
-  const tg=window.Telegram?.WebApp;
-  if(tg){tg.ready();tg.expand();}
+document.addEventListener("mousemove",e=>{
+  boat.x=e.clientX;
+});
 
-  try{
-    const res=await fetch('https://mubqtnqulpyehkgubhnh.supabase.co/functions/v1/check-franc',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({initData:tg?.initData||'',game_id:'hormuz'})
-    });
-    if(res.ok){
-      const d=await res.json();
-      hasFranc=d.hasFranc||false;
+function spawn(){
+  let r=Math.random();
+  if(r<0.2) objs.push({type:"hippo",x:rand(RL(),RR()),y:-50,timer:120,state:"idle",hp:10});
+  else if(r<0.4) objs.push({type:"mosquito",x:rand(RL(),RR()),y:-50});
+  else if(r<0.55) objs.push({type:"barrel",x:rand(RL(),RR()),y:-50});
+  else if(r<0.7) objs.push({type:"chick",x:rand(RL(),RR()),y:-50});
+  else if(r<0.85) objs.push({type:"snake",y:rand(100,H()-200),t:0});
+  else objs.push({type:"eagle",x:rand(RL(),RR()),y:-50,targetX:boat.x});
+}
+
+setInterval(spawn,1000);
+
+// ===== UPDATE =====
+function update(){
+
+  boat.x += currentForce*3;
+
+  weatherTimer--;
+  if(weatherTimer<=0){
+    weather=["rain","fog","sunset"][Math.floor(Math.random()*3)];
+    weatherTimer=600;
+    currentForce=rand(-1,1);
+    setTimeout(()=>currentForce=0,5000);
+  }
+
+  if(comboTimer>0){comboTimer--;} 
+  else {combo=0;comboMult=1;}
+
+  objs.forEach(o=>{
+    if(o.type==="hippo"){
+      o.timer--;
+      if(o.state==="idle" && o.timer<=0){
+        o.state="dive"; o.timer=60;
+      }
+      if(o.state==="dive" && o.timer<=0){
+        o.x=rand(RL(),RR()); o.y=-50;
+        o.state="idle"; o.timer=120;
+      }
+      o.y+=1;
     }
-  }catch(e){
-    console.log("Supabase lent ou hors ligne → mode gratuit");
-    hasFranc=false;
-  }
 
-  MAX_LIVES=hasFranc?10:1;
-  updateFrancUI();
+    if(o.type==="mosquito"){
+      o.x+=(boat.x-o.x)*0.02;
+      o.y+=2;
+      if(dist(o.x,o.y,boat.x,boat.y)<30){
+        boat.slowTimer=120;
+      }
+    }
+
+    if(o.type==="barrel"){
+      o.y+=3;
+      if(dist(o.x,o.y,boat.x,boat.y)<30){
+        explode(o.x,o.y);
+      }
+    }
+
+    if(o.type==="chick"){
+      o.y+=3;
+      if(dist(o.x,o.y,boat.x,boat.y)<30){
+        score+=1*comboMult;
+        combo++;
+        if(combo>=3){comboMult=2;comboTimer=300;}
+        o.dead=true;
+      }
+    }
+
+    if(o.type==="snake"){
+      o.t+=0.1;
+    }
+
+    if(o.type==="eagle"){
+      o.y+=10;
+      o.x+=(o.targetX-o.x)*0.1;
+      if(dist(o.x,o.y,boat.x,boat.y)<20){
+        hit();
+      }
+    }
+
+    if(o.y>H()+50) o.dead=true;
+  });
+
+  objs=objs.filter(o=>!o.dead);
 }
 
-// Force l'activation du bouton même si la requête Supabase bloque
-function forceEnablePlayButton(){
-  const playBtn=document.getElementById('btnPlay');
-  if(playBtn && playBtn.disabled){
-    playBtn.disabled=false;
-    playBtn.style.opacity='1';
-    playBtn.innerHTML='▶ PLAY';
-  }
+function explode(x,y){
+  screenShake=10;
+  objs.forEach(o=>{
+    if(dist(o.x,o.y,x,y)<80){
+      o.dead=true;
+    }
+  });
 }
 
-// Appel immédiat + sécurité
-detectFranc();
-setTimeout(forceEnablePlayButton, 2500);           // 2.5 secondes max
-setInterval(()=>{if(!S?.running)detectFranc();},15000);
+function hit(){
+  lives--;
+  screenShake=15;
+}
 
-// Le reste de ton script (startGame, loop, tous les nouveaux obstacles, etc.) reste exactement le même que dans la version précédente.
+// ===== DRAW =====
+function draw(){
+
+  ctx.save();
+
+  if(screenShake>0){
+    ctx.translate(rand(-5,5),rand(-5,5));
+    screenShake--;
+  }
+
+  // water
+  let g=ctx.createLinearGradient(0,0,0,H());
+  g.addColorStop(0,"#0ea5e9");
+  g.addColorStop(1,"#020617");
+  ctx.fillStyle=g;
+  ctx.fillRect(0,0,W(),H());
+
+  // river
+  ctx.fillStyle="#0b3b5a";
+  ctx.fillRect(RL(),0,RR()-RL(),H());
+
+  // boat
+  ctx.fillStyle="white";
+  ctx.fillRect(boat.x-15,boat.y-15,30,30);
+
+  // objects
+  objs.forEach(o=>{
+
+    if(o.type==="hippo"){
+      ctx.fillStyle="#6b7280";
+      ctx.beginPath();
+      ctx.arc(o.x,o.y,30,0,Math.PI*2);
+      ctx.fill();
+    }
+
+    if(o.type==="mosquito"){
+      ctx.fillStyle="black";
+      for(let i=0;i<20;i++){
+        ctx.fillRect(o.x+rand(-10,10),o.y+rand(-10,10),2,2);
+      }
+    }
+
+    if(o.type==="barrel"){
+      ctx.fillStyle="brown";
+      ctx.fillRect(o.x-10,o.y-10,20,20);
+    }
+
+    if(o.type==="chick"){
+      ctx.fillStyle="yellow";
+      ctx.fillRect(o.x-10,o.y-10,20,20);
+    }
+
+    if(o.type==="snake"){
+      ctx.strokeStyle="lime";
+      ctx.beginPath();
+      for(let x=RL();x<RR();x+=10){
+        let y=o.y+Math.sin(o.t+x*0.05)*20;
+        ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+    }
+
+    if(o.type==="eagle"){
+      ctx.fillStyle="red";
+      ctx.fillRect(o.x,o.y,10,10);
+    }
+  });
+
+  // weather
+  if(weather==="rain"){
+    for(let i=0;i<100;i++){
+      ctx.fillRect(rand(0,W()),rand(0,H()),2,10);
+    }
+  }
+
+  if(weather==="fog"){
+    ctx.fillStyle="rgba(255,255,255,0.1)";
+    ctx.fillRect(0,0,W(),H());
+  }
+
+  if(weather==="sunset"){
+    ctx.fillStyle="rgba(255,150,0,0.2)";
+    ctx.fillRect(0,0,W(),H());
+  }
+
+  // UI
+  ctx.fillStyle="white";
+  ctx.fillText("Score: "+score,20,30);
+  ctx.fillText("Lives: "+lives,20,60);
+  ctx.fillText("Combo x"+comboMult,20,90);
+
+  ctx.restore();
+}
+
+// ===== LOOP =====
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
 
 </script>
 </body>
