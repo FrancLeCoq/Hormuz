@@ -138,7 +138,12 @@ function skyColor(){
   // Returns sky overlay color based on hour
   const h=gameHour()%24;
   if(h>=6&&h<8)return {r:255,g:180,b:100,a:0.15*(h-6)/2};   // dawn
-  if(h>=8&&h<18)return {r:0,g:0,b:0,a:0};                    // day — clear
+  if(h>=8&&h<18){
+    // Day — grand soleil : halo doré chaud le plus fort à midi (h=13)
+    const noonDist=Math.abs(h-13)/5; // 0 à midi, 1 aux extrêmes (8h et 18h)
+    const intensity=1-noonDist; // luminosité max à midi
+    return {r:255,g:230,b:140,a:0.10+0.08*intensity};
+  }
   if(h>=18&&h<20)return {r:200,g:100,b:30,a:0.18*(h-18)/2};  // dusk
   if(h>=20&&h<22)return {r:20,g:10,b:60,a:0.25*(h-20)/2};    // evening
   if(h>=22||h<4)return {r:5,g:0,b:30,a:0.45};                // night
@@ -154,7 +159,7 @@ let S,boat,objs,bulls,pBulls,exps,parts,savFX,keys,scY,af,tInt,sInt;
 let shk=0,shkD=0,frN=0,mTout,lTout;
 let spinA=0,spinSp=0,spinT=0,spinOn=false;
 let fireOn=false,fireCD=0;
-const FIRE_RATE=3;
+const FIRE_RATE=12;
 let colLock=false,narrowPassages=[];
 let paused=false;
 let nextFrancBonus=100;
@@ -348,7 +353,7 @@ function spawnO(){
   if(lv>=7)types.push('candy','shark','shark');
   if(lv>=3)types.push('hippo');
   if(lv>=4)types.push('current_zone','barrel');
-  if(lv>=5)types.push('mosquito','snake');
+  if(lv>=5)types.push('snake');
   if(lv>=7)types.push('candy','shark','shark');
   if(lv>=8)types.push('island','eagle');
   if(lv>=11)types.push('homing_enemy','homing_enemy');
@@ -525,6 +530,7 @@ function checkCols(){
         if(comboCount>=3&&comboMult===1){comboMult=2;spawnMsg('x2 COMBO!',1800);}
         const pts=o.pts*comboMult;
         S.score+=pts;
+        window._lastChickPts=pts;playSound('chick');
         savFX.push({x:o.x,y:o.y-10,life:40,pts:pts,combo:comboMult>1});spawnB(o.x+o.w/2,o.y+o.h/2,comboMult>1?'#FFD700':'#ffdd00',pts*3+5);
         if(hasFranc&&S.score>=nextFrancBonus){nextFrancBonus+=100;if(S.lives<MAX_LIVES){S.lives++;spawnB(boat.x+boat.w/2,boat.y,'#ff4444',12);}}
         updateUI();continue;
@@ -733,21 +739,21 @@ function drawWeather(){
   }
 
   if(weather.type==='fog'){
-    // Layered fog strips
+    // Layered fog strips — épaisses et opaques
     ctx.save();
     const fogY=(-t2*.015%H());
-    for(let layer=0;layer<4;layer++){
-      const y=(fogY+layer*(H()/4))%H();
-      const grd=ctx.createLinearGradient(0,y-30,0,y+50);
-      grd.addColorStop(0,'rgba(200,220,240,0)');
-      grd.addColorStop(0.5,`rgba(200,220,240,${0.22*alpha})`);
-      grd.addColorStop(1,'rgba(200,220,240,0)');
-      ctx.fillStyle=grd;ctx.fillRect(0,y-30,W(),80);
+    for(let layer=0;layer<6;layer++){
+      const y=(fogY+layer*(H()/6))%H();
+      const grd=ctx.createLinearGradient(0,y-50,0,y+90);
+      grd.addColorStop(0,'rgba(220,230,240,0)');
+      grd.addColorStop(0.5,`rgba(220,230,240,${0.55*alpha})`);
+      grd.addColorStop(1,'rgba(220,230,240,0)');
+      ctx.fillStyle=grd;ctx.fillRect(0,y-50,W(),140);
     }
     ctx.restore();
-    // Visibility warning
-    ctx.save();ctx.globalAlpha=0.6*alpha;
-    ctx.fillStyle='rgba(200,220,240,0.12)';ctx.fillRect(0,0,W(),H());
+    // Voile global de visibilité réduite
+    ctx.save();
+    ctx.fillStyle=`rgba(210,225,240,${0.35*alpha})`;ctx.fillRect(0,0,W(),H());
     ctx.restore();
   }
 
@@ -946,6 +952,21 @@ function drawScene(){
   } else {
     ctx.fillStyle='#060410';ctx.fillRect(0,0,W(),H());
     if(sky.a>0){ctx.fillStyle='rgba('+sky.r+','+sky.g+','+sky.b+','+sky.a+')';ctx.fillRect(0,0,W(),H());}
+    // Grand soleil : halo lumineux en haut de l'écran en plein jour
+    const _h=gameHour()%24;
+    if(_h>=8&&_h<18){
+      const noonDist=Math.abs(_h-13)/5;
+      const sunI=Math.max(0,1-noonDist);
+      if(sunI>0){
+        const sunX=W()/2,sunY=-H()*0.15;
+        const sunR=H()*0.55;
+        const sg=ctx.createRadialGradient(sunX,sunY,0,sunX,sunY,sunR);
+        sg.addColorStop(0,`rgba(255,245,200,${0.35*sunI})`);
+        sg.addColorStop(0.4,`rgba(255,225,140,${0.18*sunI})`);
+        sg.addColorStop(1,'rgba(255,210,100,0)');
+        ctx.fillStyle=sg;ctx.fillRect(0,0,W(),H()*0.6);
+      }
+    }
   }
   drawRiver(ms);drawLampposts();drawNarrow();drawObjs();drawBullets();drawExps();
   drawSubmarines();drawBoat();drawSavFX();drawHUD();drawComboHUD();drawSlowOverlay();drawWeather();
