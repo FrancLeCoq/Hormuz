@@ -165,8 +165,8 @@ let paused=false;
 let nextFrancBonus=100;
 
 // ── PRELOAD IMAGES ──
-const imgBoat=new Image(),imgCroco=new Image(),imgShark=new Image(),imgIsland=new Image(),imgSub=new Image(),imgTrunk=new Image(),imgTurtle=new Image();
-let boatLoaded=false,crocoLoaded=false,sharkLoaded=false,islandLoaded=false,subLoaded=false,trunkLoaded=false,turtleLoaded=false;
+const imgBoat=new Image(),imgCroco=new Image(),imgShark=new Image(),imgIsland=new Image(),imgSub=new Image(),imgTrunk=new Image(),imgTurtle=new Image(),imgHippo=new Image(),imgEagle=new Image();
+let boatLoaded=false,crocoLoaded=false,sharkLoaded=false,islandLoaded=false,subLoaded=false,trunkLoaded=false,turtleLoaded=false,hippoLoaded=false,eagleLoaded=false;
 imgBoat.onload=()=>boatLoaded=true;
 imgCroco.onload=()=>crocoLoaded=true;
 imgShark.onload=()=>sharkLoaded=true;
@@ -174,6 +174,8 @@ imgIsland.onload=()=>islandLoaded=true;
 imgSub.onload=()=>subLoaded=true;
 imgTrunk.onload=()=>trunkLoaded=true;
 imgTurtle.onload=()=>turtleLoaded=true;
+imgHippo.onload=()=>hippoLoaded=true;
+imgEagle.onload=()=>eagleLoaded=true;
 imgBoat.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Bateau.png';
 imgCroco.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Crocodile.png';
 imgShark.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Requin.png';
@@ -181,6 +183,8 @@ imgIsland.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Ile.png'
 imgSub.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Sousmarin.png';
 imgTrunk.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Tronc.png';
 imgTurtle.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Tortue.png';
+imgHippo.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Hippopotame.png';
+imgEagle.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Aigle.png';
 
 function getLv(){return S?Math.min(MAX_LVL,Math.floor(S.score/PTS_LVL)+1):1;}
 function isMS(lv){return (lv||getLv())>=MORT_SUBITE;}
@@ -235,7 +239,7 @@ function startGame(){
   fireOn=false;fireCD=0;
   clearInterval(tInt);clearInterval(sInt);
   tInt=setInterval(tickT,1000);
-  sInt=setInterval(spawnO,656);
+  sInt=setInterval(spawnO,875);
   updateUI();showMsg('GO!',800);
   if(isMob){setMob(true);applyIM();}
   if(af)cancelAnimationFrame(af);
@@ -352,26 +356,44 @@ function rO(ax,ay,aw,ah,bx,by,bw,bh){return ax<bx+bw&&ax+aw>bx&&ay<by+bh&&ay+ah>
 
 function nWobble(lv){return lv>=6?{wx:(Math.random()-.5)*1.8,wf:0.018+Math.random()*.025,wp:Math.random()*Math.PI*2}:null;}
 
+let _lastSpawnTs=0;
 function spawnO(){
   if(!S||!S.running)return;
+  const now=Date.now();
+  if(now-_lastSpawnTs<500)return; // 0.5s minimum entre chaque spawn pour laisser respirer
+  _lastSpawnTs=now;
   const lv=getLv(),ri=RL(),rw=RW();
   const mg=Math.floor(rw*0.1);
   const rx=()=>ri+mg+Math.random()*(rw-mg*2);
-  const spd=(1.3+lv*0.35)*(0.85+Math.random()*0.5)*0.675;
-  const types=['chick','chick','chick','rock','trunk','croco'];
-  if(lv>=2)types.push('mine');
-  if(lv>=3)types.push('croco','rock');
-  if(lv>=4)types.push('enemy');
-  if(lv>=5)types.push('whirlpool','mine');
-  if(lv>=6)types.push('homing_enemy','homing_enemy');
-  if(lv>=7)types.push('candy','shark','shark');
-  if(lv>=3)types.push('hippo');
-  if(lv>=4)types.push('current_zone','barrel');
-  if(lv>=4)types.push('turtle'); // tortue : obstacle lent à esquiver
-  if(lv>=5)types.push('snake');
-  if(lv>=7)types.push('candy','shark','shark');
-  if(lv>=8)types.push('island','eagle');
-  if(lv>=11)types.push('homing_enemy','homing_enemy');
+  const spd=(1.3+lv*0.35)*(0.85+Math.random()*0.5)*0.506;
+  // Système de poids équitable : chaque type a un poids qui dépend du niveau
+  // Les poussins (positif) restent fréquents, mais chaque obstacle/danger a un poids similaire
+  // pour garantir la diversité plutôt que les doublons aléatoires
+  const weighted=[];
+  const W_PUSH=(type,w)=>{for(let k=0;k<w;k++)weighted.push(type);};
+  // Poussins : toujours présents en quantité raisonnable
+  W_PUSH('chick',6);
+  // Obstacles de base disponibles dès le départ
+  W_PUSH('rock',3);
+  W_PUSH('trunk',3);
+  W_PUSH('croco',3);
+  // Progression par niveau — chaque type a un poids équivalent
+  if(lv>=2) W_PUSH('mine',3);
+  if(lv>=3) W_PUSH('hippo',3);
+  if(lv>=4) W_PUSH('enemy',3);
+  if(lv>=4) W_PUSH('current_zone',2);
+  if(lv>=4) W_PUSH('barrel',3);
+  if(lv>=4) W_PUSH('turtle',3);
+  if(lv>=5) W_PUSH('whirlpool',2);
+  if(lv>=5) W_PUSH('snake',3);
+  if(lv>=6) W_PUSH('homing_enemy',3);
+  if(lv>=7) W_PUSH('candy',2);
+  if(lv>=7) W_PUSH('shark',3);
+  if(lv>=8) W_PUSH('island',2);
+  if(lv>=8) W_PUSH('eagle',3);
+  // Aux niveaux très élevés, légère sur-représentation des dangers majeurs
+  if(lv>=11) W_PUSH('homing_enemy',1);
+  const types=weighted;
   // Golden chick: always rare
   if(Math.random()<0.05)types.push('golden_chick');
   const t=types[Math.floor(Math.random()*types.length)];
@@ -400,9 +422,9 @@ function spawnO(){
     objs.push({type:'hippo',x:hx-22,y:-50,w:44,h:50,speed:spd*.25,phase:'submerged',phaseTimer:120+Math.floor(Math.random()*90),hp:10,maxHp:10,ripple:0});
   }
   else if(t==='turtle'){
-    // Tortue : obstacle lent (descend doucement), pivote, avec carapace dure
-    const tw=34+Math.random()*8,th=30+Math.random()*6;
-    objs.push({type:'turtle',x:rx(),y:-th,w:tw,h:th,speed:spd*.35,wb:{wx:0.6+Math.random()*0.6,wf:0.018+Math.random()*.01,wp:Math.random()*Math.PI*2},rot:Math.random()*Math.PI*2,rotSp:(Math.random()-.5)*0.015,hp:3,maxHp:3});
+    // Tortue : obstacle lent — sprite vertical (proportions 192x304 du PNG)
+    const tw=26+Math.random()*6,th=Math.round(tw*1.58); // ratio du PNG
+    objs.push({type:'turtle',x:rx(),y:-th,w:tw,h:th,speed:spd*.35,wb:{wx:0.6+Math.random()*0.6,wf:0.018+Math.random()*.01,wp:Math.random()*Math.PI*2},rot:0,rotSp:0,hp:3,maxHp:3});
   }
   else if(t==='current_zone'){
     const side=Math.random()<0.5?-1:1;
@@ -433,6 +455,34 @@ function updateNarrowPassages(){
   const lv=getLv();if(lv<9)return;
   if(frN%240===0){const ri=RL(),rw=RW(),nA=rw*0.18,side=Math.random()<0.5?'left':'right';narrowPassages.push({y:-30,narrowW:nA,side,speed:1.2+lv*.25});}
   narrowPassages=narrowPassages.filter(p=>{p.y+=p.speed;return p.y<H()+60;});
+}
+
+// ── TORTUES MARCHEUSES sur la pelouse → saut → eau ──
+// Spawn rare, indépendant du système d'obstacles principal
+function spawnWalkingTurtle(){
+  if(!S||!S.running)return;
+  const lv=getLv();
+  if(lv<4)return; // disponibles à partir du même palier que les tortues normales
+  const side=Math.random()<0.5?'left':'right';
+  const y=80+Math.random()*(H()-200);
+  const tw=32,th=28;
+  // Position de départ : sur la pelouse, près du bord extérieur
+  const startX=side==='left'?(RL()-tw-10-Math.random()*30):(RR()+10+Math.random()*30);
+  // Cible : juste au-delà du bord de la rivière (pour le décollage du saut)
+  const edgeX=side==='left'?(RL()+5):(RR()-tw-5);
+  objs.push({
+    type:'turtle_walking',
+    x:startX,y:y,w:tw,h:th,
+    speed:0,
+    vx:side==='left'?0.65:-0.65,
+    targetEdgeX:edgeX,
+    state:'walking', // walking → jumping → (devient turtle classique)
+    side,
+    walkPhase:Math.random()*Math.PI*2,
+    jumpT:0,jumpStartX:0,jumpStartY:0,jumpEndX:0,jumpEndY:0,
+    rot:0,
+    hp:3,maxHp:3
+  });
 }
 
 function updateWhirlpools(){
@@ -533,6 +583,21 @@ function spawnMsg(txt,dur){
 function spawnB(cx,cy,color,n){if(parts.length>300)return; // cap to prevent perf issues
 for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=1+Math.random()*3;parts.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2,life:20+Math.random()*14,maxLife:34,color,r:3,type:'pop'});}}
 
+// Blood splash: 4× plus de gouttes qu'un spawnB standard, vitesses variées
+function spawnBlood(cx,cy){
+  if(parts.length>320)return;
+  // Grosses gouttes éclaboussées à grande vitesse
+  for(let i=0;i<22;i++){
+    const a=Math.random()*Math.PI*2,s=1.5+Math.random()*5.5;
+    parts.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2.5,life:35+Math.random()*30,maxLife:65,color:i%3===0?'#ff2222':'#aa0000',r:2.5+Math.random()*2.5,type:'pop'});
+  }
+  // Petites gouttelettes plus rapides
+  for(let i=0;i<14;i++){
+    const a=Math.random()*Math.PI*2,s=3+Math.random()*4;
+    parts.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1,life:18+Math.random()*15,maxLife:33,color:'#cc0000',r:1.5+Math.random()*1.5,type:'pop'});
+  }
+}
+
 // ── KEY FIX: CHICK pickup works even during immunity (inv>0) ──
 // During inv/candy immunity: can collect chicks, candy; cannot be damaged
 function checkCols(){
@@ -600,7 +665,7 @@ function checkCols(){
         if(EATERS.includes(pred.type)){
           // Eaten by animal
           savFX.push({x:cx,y:cy-8,life:55,maxLife:55,text:'Yum! 😋',color:'#ff8800',size:26});
-          spawnB(cx,cy,'#ffaa00',6);playSound('eaten');
+          spawnBlood(cx,cy);playSound('eaten');
         } else if(EXPLODERS.includes(pred.type)){
           // Hit by mine/barrel — small explosion
           exps.push({x:cx,y:cy,r:2,maxR:22,life:16,maxLife:16});
@@ -616,7 +681,7 @@ function checkCols(){
         } else if(KILLERS.includes(pred.type)){
           // Hit by hard obstacle — blood drop
           savFX.push({x:cx,y:cy-8,life:40,maxLife:40,text:'🩸',color:'#cc0000',size:20});
-          spawnB(cx,cy,'#cc0000',5);playSound('hit');
+          spawnBlood(cx,cy);playSound('hit');
         } else {
           continue; // other types don't kill chicks
         }
@@ -674,7 +739,9 @@ function update(){
   if(!S||!S.running)return;
   frN++;handleInput();
   if(frN%60===0){updateAmbientSound();}
-  scY+=(isMob?(0.077+getLv()*.018):(0.152+getLv()*.036));
+  // Tortue marcheuse : tentative toutes les ~12s (frN%720)
+  if(frN%720===180&&Math.random()<0.7)spawnWalkingTurtle();
+  scY+=(isMob?(0.058+getLv()*.0135):(0.114+getLv()*.027));
   updateMines();updateHomingEnemies();updateWhirlpools();updateNarrowPassages();updateSubmarines();updateNewObstacles();
   if(fireCD>0)fireCD--;
   if(getLv()>=4)doFire(); // auto-fire
@@ -936,7 +1003,10 @@ function drawSubmarines(){
       // Scale to fit nicely — sub PNG is ~294×1044px, we want it ~80px wide in game
       const targetW=80, ratio=imgSub.naturalHeight/imgSub.naturalWidth;
       const dw=targetW, dh=targetW*ratio;
+      // Assombrir : couleurs plus profondes, moins opaque, plus menaçant
+      ctx.filter='brightness(0.65) contrast(1.15) saturate(0.85)';
       ctx.drawImage(imgSub,-dw/2,-dh/2,dw,dh);
+      ctx.filter='none';
     } else {
       ctx.fillStyle='#222244';ctx.beginPath();ctx.ellipse(0,0,12,40,0,0,Math.PI*2);ctx.fill();
     }
@@ -1064,6 +1134,7 @@ function drawO(o){
     case'hippo':dHippo(o);break;case'current_zone':dCurrentZone(o);break;case'mosquito':dMosquito(o);break;
     case'snake':dSnake(o);break;case'barrel':dBarrel(o);break;case'eagle':dEagle(o);break;case'golden_chick':dGoldenChick(o);break;
     case'turtle':dTurtle(o);break;
+    case'turtle_walking':dWalkingTurtle(o);break;
   }
   ctx.globalAlpha=1;
   // HP bar only from level 6 (when machine gun unlocked)
@@ -1156,26 +1227,56 @@ function dTrunk(o){
 // ── TURTLE drawn using PNG ──
 function dTurtle(o){
   ctx.save();
-  // Rotation très lente pour une dérive naturelle
-  if(o.rotSp!==undefined)o.rot+=o.rotSp;
+  // Léger oscillement de balancement plutôt qu'une rotation continue
+  const bob=Math.sin((o.wb?frN*o.wb.wf+o.wb.wp:frN*0.04))*0.08;
   ctx.translate(o.x+o.w/2,o.y+o.h/2);
-  ctx.rotate(o.rot||0);
+  ctx.rotate(bob);
   if(turtleLoaded&&imgTurtle.naturalWidth>0){
-    const drawW=o.w*1.4,drawH=o.h*1.4;
+    // Dessin à la taille exacte de l'objet (proportions déjà bonnes)
+    const drawW=o.w*1.15,drawH=o.h*1.15;
     ctx.drawImage(imgTurtle,-drawW/2,-drawH/2,drawW,drawH);
   } else {
     // Fallback simple : carapace orange + tête verte
-    ctx.fillStyle='#cc6822';ctx.beginPath();ctx.ellipse(0,2,o.w*0.5,o.h*0.42,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#7fa83a';ctx.beginPath();ctx.arc(0,-o.h*0.35,o.w*0.18,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#5a3008';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(0,2,o.w*0.5,o.h*0.42,0,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle='#cc6822';ctx.beginPath();ctx.ellipse(0,o.h*0.15,o.w*0.45,o.h*0.32,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#7fa83a';ctx.beginPath();ctx.arc(0,-o.h*0.28,o.w*0.32,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#222';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(0,o.h*0.15,o.w*0.45,o.h*0.32,0,0,Math.PI*2);ctx.stroke();
   }
-  // Petit reflet d'eau
-  ctx.strokeStyle='rgba(120,200,255,0.25)';ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.ellipse(0,o.h*0.42,o.w*0.55,o.h*0.12,0,0,Math.PI*2);ctx.stroke();
+  // Petit reflet d'eau sous la tortue
+  ctx.strokeStyle='rgba(120,200,255,0.22)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.ellipse(0,o.h*0.48,o.w*0.55,o.h*0.08,0,0,Math.PI*2);ctx.stroke();
   ctx.restore();
 }
 
-// ── CROCO drawn using PNG ──
+// ── TURTLE marcheuse (sur pelouse, puis saute dans l'eau) ──
+function dWalkingTurtle(o){
+  ctx.save();
+  let yOffset=0;
+  if(o.state==='walking'){
+    // Léger bondissement pendant la marche
+    yOffset=Math.abs(Math.sin(o.walkPhase))*-2.5;
+  }
+  ctx.translate(o.x+o.w/2,o.y+o.h/2+yOffset);
+  // Flip horizontal selon la direction de marche
+  if(o.vx>0)ctx.scale(-1,1); // marche vers la droite : retournée
+  ctx.rotate(o.rot||0);
+  if(turtleLoaded&&imgTurtle.naturalWidth>0){
+    const drawW=o.w*1.15,drawH=o.h*1.15;
+    ctx.drawImage(imgTurtle,-drawW/2,-drawH/2,drawW,drawH);
+  } else {
+    ctx.fillStyle='#cc6822';ctx.beginPath();ctx.ellipse(0,o.h*0.15,o.w*0.45,o.h*0.32,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#7fa83a';ctx.beginPath();ctx.arc(0,-o.h*0.28,o.w*0.32,0,Math.PI*2);ctx.fill();
+  }
+  ctx.restore();
+  // Petite ombre au sol pendant le saut pour le côté "elle saute"
+  if(o.state==='jumping'){
+    const groundY=o.jumpStartY+(o.jumpEndY-o.jumpStartY)*o.jumpT+o.h/2;
+    const arcH=Math.sin(o.jumpT*Math.PI)*45;
+    ctx.fillStyle=`rgba(0,0,0,${0.25*(1-arcH/45)})`;
+    ctx.beginPath();ctx.ellipse(o.x+o.w/2,groundY,o.w*0.4,o.w*0.12,0,0,Math.PI*2);ctx.fill();
+  }
+}
+
+
 function dCroco(o){
   ctx.save();ctx.translate(o.x+o.w/2,o.y+o.h/2);ctx.rotate(Math.sin(o.sway)*0.08);
   if(crocoLoaded&&imgCroco.naturalWidth>0){
@@ -1593,7 +1694,7 @@ function togglePause(){
     ctx.fillText('Tap to resume',W()/2,H()/2+50);
   } else {
     tInt=setInterval(tickT,1000);
-    sInt=setInterval(spawnO,656);
+    sInt=setInterval(spawnO,875);
     if(btn)btn.textContent='⏸';
     // Resume audio
     if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
@@ -1723,6 +1824,52 @@ function triggerShakeSoft(){shk=4;shkD=8;}
 
 function updateNewObstacles(){
   if(!S||!S.running)return;
+
+  // ── TORTUES MARCHEUSES : marche pelouse → saut → eau ──
+  for(let i=objs.length-1;i>=0;i--){
+    const o=objs[i];if(!o||o.type!=='turtle_walking')continue;
+    if(o.state==='walking'){
+      o.x+=o.vx;
+      o.walkPhase+=0.18; // démarche bondissante
+      // Atteint le bord de la rivière → déclenchement du saut
+      const reached=o.side==='left'?(o.x>=o.targetEdgeX):(o.x<=o.targetEdgeX);
+      if(reached){
+        o.state='jumping';
+        o.jumpT=0;
+        o.jumpStartX=o.x;o.jumpStartY=o.y;
+        // Atterrit dans la rivière, au tiers ou aux 2/3 selon le côté
+        const ri=RL(),rw=RW();
+        o.jumpEndX=o.side==='left'?(ri+rw*0.3+Math.random()*rw*0.2):(ri+rw*0.5+Math.random()*rw*0.2);
+        o.jumpEndY=o.y+15+Math.random()*20;
+      }
+    } else if(o.state==='jumping'){
+      o.jumpT+=0.04; // 25 frames pour le saut complet
+      const t=o.jumpT;
+      if(t>=1){
+        // Atterrissage : éclaboussure et conversion en tortue normale flottante
+        const cx=o.jumpEndX+o.w/2,cy=o.jumpEndY+o.h/2;
+        // Splash : particules d'eau bleues
+        if(parts.length<280){
+          for(let p=0;p<14;p++){
+            const a=Math.random()*Math.PI*2-Math.PI/2,s=2+Math.random()*3.5;
+            parts.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2,life:18+Math.random()*12,maxLife:30,color:p%2===0?'#88ccff':'#cce8ff',r:2+Math.random()*1.5,type:'pop'});
+          }
+        }
+        // Remplacer par une vraie tortue qui descend
+        objs.splice(i,1);
+        const spd=(1.3+getLv()*0.35)*0.85*0.506;
+        objs.push({type:'turtle',x:o.jumpEndX,y:o.jumpEndY,w:o.w,h:o.h,speed:spd*.35,wb:{wx:0.6+Math.random()*0.6,wf:0.018+Math.random()*.01,wp:Math.random()*Math.PI*2},rot:(Math.random()-.5)*0.4,rotSp:0,hp:3,maxHp:3});
+      } else {
+        // Trajectoire d'arc parabolique
+        o.x=o.jumpStartX+(o.jumpEndX-o.jumpStartX)*t;
+        const arc=Math.sin(t*Math.PI)*45; // hauteur d'arc
+        o.y=o.jumpStartY+(o.jumpEndY-o.jumpStartY)*t-arc;
+        o.rot=(o.side==='left'?1:-1)*t*0.4;
+      }
+    }
+    // Sortie d'écran si trop bas
+    if(o.y>H()+50){objs.splice(i,1);continue;}
+  }
 
   // ── HIPPO phase machine ──
   for(let i=objs.length-1;i>=0;i--){
@@ -1900,23 +2047,34 @@ function dHippo(o){
   const emerge=phase==='emerging'?1-(o.phaseTimer/80):phase==='surface'?1:phase==='submerging'?(o.phaseTimer/60):0;
   if(emerge>0.05){
     ctx.globalAlpha=Math.min(1,emerge*1.5);
-    // Body
-    ctx.fillStyle='#4a6e3a';ctx.beginPath();ctx.ellipse(cx,cy+10-emerge*20,o.w*.5,o.h*.35,0,0,Math.PI*2);ctx.fill();
-    // Head
-    ctx.fillStyle='#5a8040';ctx.beginPath();ctx.ellipse(cx,cy-emerge*18,o.w*.38,o.h*.28,0,0,Math.PI*2);ctx.fill();
-    // Nose bumps
-    ctx.fillStyle='#6a9850';
-    ctx.beginPath();ctx.ellipse(cx-8,cy-emerge*22,7,5,-.2,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.ellipse(cx+8,cy-emerge*22,7,5,.2,0,Math.PI*2);ctx.fill();
-    // Nostrils
-    ctx.fillStyle='#2a3e18';
-    ctx.beginPath();ctx.ellipse(cx-6,cy-emerge*23,2,1.5,0,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.ellipse(cx+6,cy-emerge*23,2,1.5,0,0,Math.PI*2);ctx.fill();
-    // Eyes
-    ctx.fillStyle='#ffe066';ctx.beginPath();ctx.ellipse(cx-10,cy-emerge*20,4,3,0,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.ellipse(cx+10,cy-emerge*20,4,3,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#222';ctx.beginPath();ctx.arc(cx-10,cy-emerge*20,2,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(cx+10,cy-emerge*20,2,0,Math.PI*2);ctx.fill();
+    if(hippoLoaded&&imgHippo.naturalWidth>0){
+      // Image hippo : on ne montre que la moitié supérieure quand il émerge
+      const drawW=o.w*1.35,drawH=o.h*1.35;
+      // Décalage Y : monte progressivement avec emerge
+      const dy=cy-emerge*20-drawH/2;
+      // Clip : on coupe la moitié inférieure du PNG pour donner l'impression qu'il sort de l'eau
+      ctx.save();
+      const visibleH=drawH*(0.45+emerge*0.45); // de 45% à 90% visible
+      ctx.beginPath();
+      ctx.rect(cx-drawW/2,dy,drawW,visibleH);
+      ctx.clip();
+      ctx.drawImage(imgHippo,cx-drawW/2,dy,drawW,drawH);
+      ctx.restore();
+    } else {
+      // Fallback dessin Canvas
+      ctx.fillStyle='#4a6e3a';ctx.beginPath();ctx.ellipse(cx,cy+10-emerge*20,o.w*.5,o.h*.35,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#5a8040';ctx.beginPath();ctx.ellipse(cx,cy-emerge*18,o.w*.38,o.h*.28,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#6a9850';
+      ctx.beginPath();ctx.ellipse(cx-8,cy-emerge*22,7,5,-.2,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(cx+8,cy-emerge*22,7,5,.2,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#2a3e18';
+      ctx.beginPath();ctx.ellipse(cx-6,cy-emerge*23,2,1.5,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(cx+6,cy-emerge*23,2,1.5,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#ffe066';ctx.beginPath();ctx.ellipse(cx-10,cy-emerge*20,4,3,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(cx+10,cy-emerge*20,4,3,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#222';ctx.beginPath();ctx.arc(cx-10,cy-emerge*20,2,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(cx+10,cy-emerge*20,2,0,Math.PI*2);ctx.fill();
+    }
     ctx.globalAlpha=1;
   }
   // HP bar
@@ -2031,20 +2189,25 @@ function dEagle(o){
   ctx.save();ctx.translate(o.x+o.w/2,o.y+o.h/2);
   if(o.phase==='dive')ctx.rotate(Math.atan2(o.vy,o.vx)+Math.PI/2);
   else ctx.rotate(Math.sin(t2*.015)*.1);
-  // Wing flap
-  const flap=Math.sin(t2*.12)*0.4;
-  ctx.fillStyle='#3a2a10';
-  ctx.save();ctx.rotate(-flap);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-o.w*.6,-4);ctx.lineTo(-o.w*.5,6);ctx.closePath();ctx.fill();ctx.restore();
-  ctx.save();ctx.rotate(flap);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(o.w*.6,-4);ctx.lineTo(o.w*.5,6);ctx.closePath();ctx.fill();ctx.restore();
-  // Body
-  ctx.fillStyle='#5a4020';ctx.beginPath();ctx.ellipse(0,0,7,10,0,0,Math.PI*2);ctx.fill();
-  // White head
-  ctx.fillStyle='#f0f0f0';ctx.beginPath();ctx.arc(0,-8,6,0,Math.PI*2);ctx.fill();
-  // Beak
-  ctx.fillStyle='#e8a020';ctx.beginPath();ctx.moveTo(-3,-5);ctx.lineTo(3,-5);ctx.lineTo(0,-1);ctx.closePath();ctx.fill();
-  // Eye
-  ctx.fillStyle='#222';ctx.beginPath();ctx.arc(0,-9,2,0,Math.PI*2);ctx.fill();
-  // Shadow when diving
+  if(eagleLoaded&&imgEagle.naturalWidth>0){
+    // PNG : taille en jeu raisonnable, l'image fait office d'aigle complet
+    const drawW=o.w*1.4,drawH=o.h*1.4;
+    // Léger battement d'ailes simulé par scale Y (effet de souffle)
+    const flapScale=1+Math.sin(t2*.012)*0.05;
+    ctx.scale(1,flapScale);
+    ctx.drawImage(imgEagle,-drawW/2,-drawH/2,drawW,drawH);
+  } else {
+    // Fallback dessin Canvas
+    const flap=Math.sin(t2*.12)*0.4;
+    ctx.fillStyle='#3a2a10';
+    ctx.save();ctx.rotate(-flap);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-o.w*.6,-4);ctx.lineTo(-o.w*.5,6);ctx.closePath();ctx.fill();ctx.restore();
+    ctx.save();ctx.rotate(flap);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(o.w*.6,-4);ctx.lineTo(o.w*.5,6);ctx.closePath();ctx.fill();ctx.restore();
+    ctx.fillStyle='#5a4020';ctx.beginPath();ctx.ellipse(0,0,7,10,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#f0f0f0';ctx.beginPath();ctx.arc(0,-8,6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#e8a020';ctx.beginPath();ctx.moveTo(-3,-5);ctx.lineTo(3,-5);ctx.lineTo(0,-1);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#222';ctx.beginPath();ctx.arc(0,-9,2,0,Math.PI*2);ctx.fill();
+  }
+  // Shadow when diving (rouge menaçant)
   if(o.phase==='dive'){ctx.globalAlpha=0.4;ctx.fillStyle='#ff4400';ctx.beginPath();ctx.ellipse(0,6,5,3,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
   ctx.restore();
 }
