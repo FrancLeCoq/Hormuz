@@ -165,18 +165,22 @@ let paused=false;
 let nextFrancBonus=100;
 
 // ── PRELOAD IMAGES ──
-const imgBoat=new Image(),imgCroco=new Image(),imgShark=new Image(),imgIsland=new Image(),imgSub=new Image();
-let boatLoaded=false,crocoLoaded=false,sharkLoaded=false,islandLoaded=false,subLoaded=false;
+const imgBoat=new Image(),imgCroco=new Image(),imgShark=new Image(),imgIsland=new Image(),imgSub=new Image(),imgTrunk=new Image(),imgTurtle=new Image();
+let boatLoaded=false,crocoLoaded=false,sharkLoaded=false,islandLoaded=false,subLoaded=false,trunkLoaded=false,turtleLoaded=false;
 imgBoat.onload=()=>boatLoaded=true;
 imgCroco.onload=()=>crocoLoaded=true;
 imgShark.onload=()=>sharkLoaded=true;
 imgIsland.onload=()=>islandLoaded=true;
 imgSub.onload=()=>subLoaded=true;
+imgTrunk.onload=()=>trunkLoaded=true;
+imgTurtle.onload=()=>turtleLoaded=true;
 imgBoat.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Bateau.png';
 imgCroco.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Crocodile.png';
 imgShark.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Requin.png';
 imgIsland.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Ile.png';
 imgSub.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Sousmarin.png';
+imgTrunk.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Tronc.png';
+imgTurtle.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Tortue.png';
 
 function getLv(){return S?Math.min(MAX_LVL,Math.floor(S.score/PTS_LVL)+1):1;}
 function isMS(lv){return (lv||getLv())>=MORT_SUBITE;}
@@ -210,6 +214,11 @@ function iB(){return{x:W()/2-30,y:H()-180,w:60,h:79,inv:0,sink:0};}
 function startGame(){
   initAudio();
   if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();
+  // Restaurer le volume si on a coupé le son lors d'un game over précédent
+  try{
+    if(window._masterGain&&audioCtx){window._masterGain.gain.cancelScheduledValues(audioCtx.currentTime);window._masterGain.gain.setTargetAtTime(soundEnabled?0.55:0,audioCtx.currentTime,0.1);}
+    if(ambientGain&&audioCtx){ambientGain.gain.cancelScheduledValues(audioCtx.currentTime);ambientGain.gain.setTargetAtTime(soundEnabled?0.08:0,audioCtx.currentTime,0.3);}
+  }catch(e){}
   nextFrancBonus=100;
   paused=false;
   MAX_LIVES=hasFranc?10:1;
@@ -258,6 +267,11 @@ function loseL(){
 function gameOver(){
   if(!S)return;S.running=false;
   clearInterval(tInt);clearInterval(sInt);setMob(false);
+  // Arrêter tous les sons en cours (ambient + master)
+  try{
+    if(ambientGain&&audioCtx){ambientGain.gain.cancelScheduledValues(audioCtx.currentTime);ambientGain.gain.setTargetAtTime(0,audioCtx.currentTime,0.05);}
+    if(window._masterGain&&audioCtx){window._masterGain.gain.cancelScheduledValues(audioCtx.currentTime);window._masterGain.gain.setTargetAtTime(0,audioCtx.currentTime,0.05);}
+  }catch(e){}
   saveScore();
   showMsg('GAME OVER',99999,'gameover');
   setTimeout(()=>{
@@ -353,6 +367,7 @@ function spawnO(){
   if(lv>=7)types.push('candy','shark','shark');
   if(lv>=3)types.push('hippo');
   if(lv>=4)types.push('current_zone','barrel');
+  if(lv>=4)types.push('turtle'); // tortue : obstacle lent à esquiver
   if(lv>=5)types.push('snake');
   if(lv>=7)types.push('candy','shark','shark');
   if(lv>=8)types.push('island','eagle');
@@ -383,6 +398,11 @@ function spawnO(){
   else if(t==='hippo'){
     const hx=rx();
     objs.push({type:'hippo',x:hx-22,y:-50,w:44,h:50,speed:spd*.25,phase:'submerged',phaseTimer:120+Math.floor(Math.random()*90),hp:10,maxHp:10,ripple:0});
+  }
+  else if(t==='turtle'){
+    // Tortue : obstacle lent (descend doucement), pivote, avec carapace dure
+    const tw=34+Math.random()*8,th=30+Math.random()*6;
+    objs.push({type:'turtle',x:rx(),y:-th,w:tw,h:th,speed:spd*.35,wb:{wx:0.6+Math.random()*0.6,wf:0.018+Math.random()*.01,wp:Math.random()*Math.PI*2},rot:Math.random()*Math.PI*2,rotSp:(Math.random()-.5)*0.015,hp:3,maxHp:3});
   }
   else if(t==='current_zone'){
     const side=Math.random()<0.5?-1:1;
@@ -551,7 +571,7 @@ function checkCols(){
       // All other collisions: only happen when NOT invincible
       if(boat.inv>0)continue;
       if(o.type==='mine'){if(!o.dead){o.dead=true;playSound('mine');trigEx(o.x+o.w/2,o.y+o.h/2);objs.splice(i,1);colLock=false;loseL();return;}}
-      else if(['island','rock','trunk','croco','shark','enemy','homing_enemy','hippo','snake','eagle','barrel'].includes(o.type)){colLock=false;loseL();return;}
+      else if(['island','rock','trunk','croco','shark','enemy','homing_enemy','hippo','snake','eagle','barrel','turtle'].includes(o.type)){colLock=false;loseL();return;}
     }
     // Enemy bullets — only when not invincible
     if(boat.inv<=0){
@@ -618,7 +638,7 @@ function checkCols(){
       if(!pBulls[i])continue;const b=pBulls[i];let hit=false;
       for(let j=objs.length-1;j>=0;j--){
         if(!objs[j])continue;const o=objs[j];
-        const shootable=['homing_enemy','enemy','croco','shark','snake','hippo','barrel','mine'];
+        const shootable=['homing_enemy','enemy','croco','shark','snake','hippo','barrel','mine','turtle'];
         if(!shootable.includes(o.type))continue;
         if(rO(b.x-b.r,b.y-b.r,b.r*2,b.r*2,o.x,o.y,o.w,o.h)){
           spawnB(b.x,b.y,'#ffaa00',5);
@@ -843,7 +863,7 @@ function updateSubmarines(){
     // Shoot missiles at ALL obstacles on screen
     sub.shootTimer--;
     if(sub.shootTimer<=0){
-      const ALL_TARGETS=['homing_enemy','enemy','croco','shark','hippo','rock','trunk','mine','barrel','whirlpool'];
+      const ALL_TARGETS=['homing_enemy','enemy','croco','shark','hippo','rock','trunk','mine','barrel','whirlpool','turtle'];
       const targets=objs.filter(o=>ALL_TARGETS.includes(o.type)&&o.y>-50&&o.y<H()+50);
       for(const tgt of targets){
         const dx=(tgt.x+tgt.w/2)-(sub.x+sub.w/2);
@@ -1043,6 +1063,7 @@ function drawO(o){
     case'candy':dCandy(o);break;case'shark':dShark(o);break;case'island':dIsland(o);break;
     case'hippo':dHippo(o);break;case'current_zone':dCurrentZone(o);break;case'mosquito':dMosquito(o);break;
     case'snake':dSnake(o);break;case'barrel':dBarrel(o);break;case'eagle':dEagle(o);break;case'golden_chick':dGoldenChick(o);break;
+    case'turtle':dTurtle(o);break;
   }
   ctx.globalAlpha=1;
   // HP bar only from level 6 (when machine gun unlocked)
@@ -1088,6 +1109,25 @@ function dRock(o){
 }
 function dTrunk(o){
   ctx.save();
+  // Priorité au PNG si chargé
+  if(trunkLoaded&&imgTrunk.naturalWidth>0){
+    if(o.vertical){
+      // PNG natif horizontal → on le tourne de 90°
+      ctx.translate(o.x+o.w/2,o.y+o.h/2);
+      ctx.rotate(Math.PI/2);
+      // Largeur dans cette orientation = ancienne hauteur
+      const drawW=o.h*1.15,drawH=o.w*1.15;
+      ctx.drawImage(imgTrunk,-drawW/2,-drawH/2,drawW,drawH);
+    } else {
+      ctx.translate(o.x+o.w/2,o.y+o.h/2);
+      ctx.rotate(o.ang||0);
+      const drawW=o.w*1.15,drawH=o.h*1.45;
+      ctx.drawImage(imgTrunk,-drawW/2,-drawH/2,drawW,drawH);
+    }
+    ctx.restore();
+    return;
+  }
+  // Fallback : dessin Canvas (ancienne méthode)
   if(o.vertical){
     ctx.translate(o.x+o.w/2,o.y+o.h/2);const hw=o.w/2,hh=o.h/2;
     ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(hw+3,0,6,hh-4,0,0,Math.PI*2);ctx.fill();
@@ -1113,6 +1153,28 @@ function dTrunk(o){
   }
   ctx.restore();
 }
+// ── TURTLE drawn using PNG ──
+function dTurtle(o){
+  ctx.save();
+  // Rotation très lente pour une dérive naturelle
+  if(o.rotSp!==undefined)o.rot+=o.rotSp;
+  ctx.translate(o.x+o.w/2,o.y+o.h/2);
+  ctx.rotate(o.rot||0);
+  if(turtleLoaded&&imgTurtle.naturalWidth>0){
+    const drawW=o.w*1.4,drawH=o.h*1.4;
+    ctx.drawImage(imgTurtle,-drawW/2,-drawH/2,drawW,drawH);
+  } else {
+    // Fallback simple : carapace orange + tête verte
+    ctx.fillStyle='#cc6822';ctx.beginPath();ctx.ellipse(0,2,o.w*0.5,o.h*0.42,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#7fa83a';ctx.beginPath();ctx.arc(0,-o.h*0.35,o.w*0.18,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#5a3008';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(0,2,o.w*0.5,o.h*0.42,0,0,Math.PI*2);ctx.stroke();
+  }
+  // Petit reflet d'eau
+  ctx.strokeStyle='rgba(120,200,255,0.25)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.ellipse(0,o.h*0.42,o.w*0.55,o.h*0.12,0,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
+}
+
 // ── CROCO drawn using PNG ──
 function dCroco(o){
   ctx.save();ctx.translate(o.x+o.w/2,o.y+o.h/2);ctx.rotate(Math.sin(o.sway)*0.08);
@@ -1393,33 +1455,36 @@ function playSound(type){
       src.connect(f);f.connect(g);g.connect(mg);src.start(now);
     }
     else if(type==='chick'){
-      // LOUD coin ding — bypass master gain for max volume
-      const pts=window._lastChickPts||1;
-      const baseFreq=880+pts*220;
-      // Dedicated loud gain node connected directly to destination
+      // Petit piaillement mignon de poussin (cui-cui)
       const loudGain=ac.createGain();
-      loudGain.gain.value=1.0; // max volume
+      loudGain.gain.value=0.85;
       loudGain.connect(ac.destination);
-      // Primary bell tone
-      const o=ac.createOscillator(),g=ac.createGain();
-      o.type='sine';
-      o.frequency.setValueAtTime(baseFreq*1.5,now);
-      o.frequency.exponentialRampToValueAtTime(baseFreq,now+0.02);
-      g.gain.setValueAtTime(0,now);g.gain.linearRampToValueAtTime(0.9,now+0.008);
-      g.gain.exponentialRampToValueAtTime(0.001,now+0.5);
-      o.connect(g);g.connect(loudGain);o.start(now);o.stop(now+0.5);
-      // Harmonic — also loud
-      const o2=ac.createOscillator(),g2=ac.createGain();
-      o2.type='sine';o2.frequency.value=baseFreq*2.76;
-      g2.gain.setValueAtTime(0.5,now);g2.gain.exponentialRampToValueAtTime(0.001,now+0.25);
-      o2.connect(g2);g2.connect(loudGain);o2.start(now);o2.stop(now+0.25);
-      // Pts bonus sparkle
-      if(pts>=2){
-        const o3=ac.createOscillator(),g3=ac.createGain();
-        o3.type='sine';o3.frequency.value=baseFreq*(pts>=3?4:3);
-        g3.gain.setValueAtTime(0.35,now+0.06);g3.gain.exponentialRampToValueAtTime(0.001,now+0.28);
-        o3.connect(g3);g3.connect(loudGain);o3.start(now+0.06);o3.stop(now+0.28);
-      }
+      // 2 petits "cui-cui" rapides en glissando montant
+      const chirps=[
+        {start:0,    fStart:1800,fEnd:2600,dur:0.07},
+        {start:0.10, fStart:2000,fEnd:2900,dur:0.06}
+      ];
+      chirps.forEach(c=>{
+        const o=ac.createOscillator(),g=ac.createGain();
+        o.type='triangle';
+        o.frequency.setValueAtTime(c.fStart,now+c.start);
+        o.frequency.exponentialRampToValueAtTime(c.fEnd,now+c.start+c.dur);
+        g.gain.setValueAtTime(0,now+c.start);
+        g.gain.linearRampToValueAtTime(0.55,now+c.start+0.005);
+        g.gain.exponentialRampToValueAtTime(0.001,now+c.start+c.dur);
+        o.connect(g);g.connect(loudGain);
+        o.start(now+c.start);o.stop(now+c.start+c.dur+0.02);
+        // Petite harmonique aiguë qui donne le côté "mignon"
+        const o2=ac.createOscillator(),g2=ac.createGain();
+        o2.type='sine';
+        o2.frequency.setValueAtTime(c.fStart*1.5,now+c.start);
+        o2.frequency.exponentialRampToValueAtTime(c.fEnd*1.5,now+c.start+c.dur);
+        g2.gain.setValueAtTime(0,now+c.start);
+        g2.gain.linearRampToValueAtTime(0.18,now+c.start+0.005);
+        g2.gain.exponentialRampToValueAtTime(0.001,now+c.start+c.dur);
+        o2.connect(g2);g2.connect(loudGain);
+        o2.start(now+c.start);o2.stop(now+c.start+c.dur+0.02);
+      });
     }
     else if(type==='golden_chick'){
       const freqs=[800,1000,1200,1500,1200,1000,1400];
@@ -1623,8 +1688,14 @@ detectFranc();
 setInterval(()=>{if(!S?.running)detectFranc();},10000);
 
 
-// Split a rock or trunk into 2 smaller pieces
+// Split a rock or trunk into 2 smaller pieces — fragments cannot be re-split
 function splitObject(o,idx){
+  // Si c'est déjà un fragment, on le détruit simplement (pas de re-split)
+  if(o.isFragment){
+    spawnB(o.x+o.w/2,o.y+o.h/2,'#c8a04a',6);
+    objs.splice(idx,1);
+    return;
+  }
   spawnB(o.x+o.w/2,o.y+o.h/2,'#c8a04a',8);
   triggerShakeSoft();
   // Remove original
@@ -1633,18 +1704,18 @@ function splitObject(o,idx){
   const spd2=o.speed*(1.1+Math.random()*.3);
   if(o.type==='rock'){
     const hw=Math.max(8,o.w/2),hh=Math.max(8,o.h/2);
-    objs.push({type:'rock',x:o.x,y:o.y,w:hw,h:hh,speed:spd2,wb:{wx:-(1+Math.random()*1.5),wf:0.04,wp:0},hp:1,maxHp:1});
-    objs.push({type:'rock',x:o.x+o.w/2,y:o.y,w:hw,h:hh,speed:spd2*(0.9+Math.random()*.2),wb:{wx:(1+Math.random()*1.5),wf:0.04,wp:1},hp:1,maxHp:1});
+    objs.push({type:'rock',x:o.x,y:o.y,w:hw,h:hh,speed:spd2,wb:{wx:-(1+Math.random()*1.5),wf:0.04,wp:0},hp:1,maxHp:1,isFragment:true});
+    objs.push({type:'rock',x:o.x+o.w/2,y:o.y,w:hw,h:hh,speed:spd2*(0.9+Math.random()*.2),wb:{wx:(1+Math.random()*1.5),wf:0.04,wp:1},hp:1,maxHp:1,isFragment:true});
   } else {
     // trunk — split horizontally/vertically
     const hlen=Math.max(10,o.vertical?o.h/2:o.w/2);
     const thick=o.vertical?o.w:o.h;
     if(o.vertical){
-      objs.push({type:'trunk',x:o.x,y:o.y,w:thick,h:hlen,speed:spd2,ang:0,vertical:true,mossPts:[],branches:[],wb:{wx:-(0.8+Math.random()),wf:0.035,wp:0},hp:1,maxHp:1});
-      objs.push({type:'trunk',x:o.x,y:o.y+hlen,w:thick,h:hlen,speed:spd2*(0.85+Math.random()*.3),ang:0,vertical:true,mossPts:[],branches:[],wb:{wx:(0.8+Math.random()),wf:0.035,wp:2},hp:1,maxHp:1});
+      objs.push({type:'trunk',x:o.x,y:o.y,w:thick,h:hlen,speed:spd2,ang:0,vertical:true,mossPts:[],branches:[],wb:{wx:-(0.8+Math.random()),wf:0.035,wp:0},hp:1,maxHp:1,isFragment:true});
+      objs.push({type:'trunk',x:o.x,y:o.y+hlen,w:thick,h:hlen,speed:spd2*(0.85+Math.random()*.3),ang:0,vertical:true,mossPts:[],branches:[],wb:{wx:(0.8+Math.random()),wf:0.035,wp:2},hp:1,maxHp:1,isFragment:true});
     } else {
-      objs.push({type:'trunk',x:o.x,y:o.y,w:hlen,h:thick,speed:spd2,ang:o.ang||0,vertical:false,mossPts:[],branches:[],wb:{wx:-(0.8+Math.random()),wf:0.035,wp:0},hp:1,maxHp:1});
-      objs.push({type:'trunk',x:o.x+hlen,y:o.y,w:hlen,h:thick,speed:spd2*(0.85+Math.random()*.3),ang:o.ang||0,vertical:false,mossPts:[],branches:[],wb:{wx:(0.8+Math.random()),wf:0.035,wp:2},hp:1,maxHp:1});
+      objs.push({type:'trunk',x:o.x,y:o.y,w:hlen,h:thick,speed:spd2,ang:o.ang||0,vertical:false,mossPts:[],branches:[],wb:{wx:-(0.8+Math.random()),wf:0.035,wp:0},hp:1,maxHp:1,isFragment:true});
+      objs.push({type:'trunk',x:o.x+hlen,y:o.y,w:hlen,h:thick,speed:spd2*(0.85+Math.random()*.3),ang:o.ang||0,vertical:false,mossPts:[],branches:[],wb:{wx:(0.8+Math.random()),wf:0.035,wp:2},hp:1,maxHp:1,isFragment:true});
     }
   }
 }
@@ -1742,7 +1813,7 @@ function updateNewObstacles(){
   // Creatures = croco/shark/enemy/homing → skull+blood on death
   // Dumb obstacles = rock/trunk/mine/barrel → tiny spark puff
   // Limit to 1 collision check per frame per object (use cooldown)
-  const COLLIDABLE=['rock','trunk','mine','enemy','homing_enemy','croco','shark','hippo','barrel'];
+  const COLLIDABLE=['rock','trunk','mine','enemy','homing_enemy','croco','shark','hippo','barrel','turtle'];
   const CREATURES=['croco','shark','enemy','homing_enemy','hippo'];
   for(let i=objs.length-1;i>=0;i--){
     if(!objs[i])continue;
