@@ -304,12 +304,12 @@ C.addEventListener('touchend',e=>{e.preventDefault();if(inputMode==='joystick'){
 function doFire(){
   if(!S||!S.running||fireCD>0||getLv()<4)return;
   const lv=getLv();
-  // Lv 4-5: slow auto-fire single shot; Lv 6+: machine gun
+  // Lv 4-5: tir auto régulier; Lv 6+: mitraillette
   const isMachineGun=lv>=6;
-  const cooldown=isMachineGun?FIRE_RATE:40;
+  const cooldown=isMachineGun?FIRE_RATE:20; // niveau 4-5 : tir constant (20 frames ≈ 3 tirs/sec)
   const bx=boat.x+boat.w/2,by=boat.y;
-  // Priority targeting: homing first (they shoot back), then enemy boats, shark, croco
-  const PRIORITY=['homing_enemy','enemy','shark','croco','snake','mine'];
+  // Cibles élargies : tortue, serpent, mine, crocodile, baril, ennemis, requin, aigle
+  const PRIORITY=['homing_enemy','enemy','shark','eagle','croco','snake','mine','barrel','turtle'];
   let tgt=null,bestScore=-1;
   for(const o of objs){
     const pi=PRIORITY.indexOf(o.type);
@@ -916,9 +916,9 @@ function spawnSubmarine(lv){
     shootTimer:30,
     missiles:[],
     done:false,
-    alpha:0.82,               // slightly submerged look
+    alpha:1,                  // pleine opacité pour un vrai noir sur le dessus
     flash:0,
-    immersionY:8              // draw offset downward (submerged)
+    immersionY:5              // moins immergé : on voit mieux le sous-marin
   });
 }
 
@@ -992,7 +992,8 @@ function drawSubmarines(){
     ctx.save();
     const scx=sub.x+sub.w/2, scy=sub.y+sub.h/2;
     ctx.translate(scx,scy);
-    const flashAlpha=(sub.flash>0)?(0.6+Math.sin(sub.flash*.5)*0.4):(sub.alpha||0.95);
+    // Pleine opacité sauf pendant un flash (effet d'impact). Plus de transparence par défaut.
+    const flashAlpha=(sub.flash>0)?(0.6+Math.sin(sub.flash*.5)*0.4):1;
     if(sub.flash>0)sub.flash--;
     ctx.globalAlpha=flashAlpha;
 
@@ -1003,8 +1004,8 @@ function drawSubmarines(){
       // Scale to fit nicely — sub PNG is ~294×1044px, we want it ~80px wide in game
       const targetW=80, ratio=imgSub.naturalHeight/imgSub.naturalWidth;
       const dw=targetW, dh=targetW*ratio;
-      // Assombrir : couleurs plus profondes, moins opaque, plus menaçant
-      ctx.filter='brightness(0.65) contrast(1.15) saturate(0.85)';
+      // Filtre plus doux : juste un léger contraste pour éviter de "laver" les noirs
+      ctx.filter='brightness(0.85) contrast(1.2) saturate(0.9)';
       ctx.drawImage(imgSub,-dw/2,-dh/2,dw,dh);
       ctx.filter='none';
     } else {
@@ -1232,18 +1233,33 @@ function dTurtle(o){
   ctx.translate(o.x+o.w/2,o.y+o.h/2);
   ctx.rotate(bob);
   if(turtleLoaded&&imgTurtle.naturalWidth>0){
-    // Dessin à la taille exacte de l'objet (proportions déjà bonnes)
     const drawW=o.w*1.15,drawH=o.h*1.15;
+    // Clip : on coupe les ~22% du bas (pattes, plastron) qui restent sous l'eau
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(-drawW/2,-drawH/2,drawW,drawH*0.78);
+    ctx.clip();
     ctx.drawImage(imgTurtle,-drawW/2,-drawH/2,drawW,drawH);
+    ctx.restore();
+    // Ligne de flottaison ondulée au niveau de la coupure
+    const waterY=drawH*0.78-drawH/2;
+    ctx.strokeStyle='rgba(140,200,255,0.45)';ctx.lineWidth=1.3;
+    ctx.beginPath();
+    for(let xx=-drawW*0.45;xx<drawW*0.45;xx+=3){
+      const wy=waterY+Math.sin(xx*0.25+frN*0.06)*1.2;
+      if(xx===-drawW*0.45)ctx.moveTo(xx,wy);
+      else ctx.lineTo(xx,wy);
+    }
+    ctx.stroke();
   } else {
     // Fallback simple : carapace orange + tête verte
-    ctx.fillStyle='#cc6822';ctx.beginPath();ctx.ellipse(0,o.h*0.15,o.w*0.45,o.h*0.32,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#cc6822';ctx.beginPath();ctx.ellipse(0,o.h*0.05,o.w*0.45,o.h*0.27,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle='#7fa83a';ctx.beginPath();ctx.arc(0,-o.h*0.28,o.w*0.32,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#222';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(0,o.h*0.15,o.w*0.45,o.h*0.32,0,0,Math.PI*2);ctx.stroke();
+    ctx.strokeStyle='#222';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(0,o.h*0.05,o.w*0.45,o.h*0.27,0,0,Math.PI*2);ctx.stroke();
   }
-  // Petit reflet d'eau sous la tortue
-  ctx.strokeStyle='rgba(120,200,255,0.22)';ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.ellipse(0,o.h*0.48,o.w*0.55,o.h*0.08,0,0,Math.PI*2);ctx.stroke();
+  // Reflet d'eau sous la tortue (effet de sillage)
+  ctx.strokeStyle='rgba(120,200,255,0.28)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.ellipse(0,o.h*0.42,o.w*0.5,o.h*0.07,0,0,Math.PI*2);ctx.stroke();
   ctx.restore();
 }
 
@@ -2039,41 +2055,74 @@ function updateNewObstacles(){
 function dHippo(o){
   const cx=o.x+o.w/2,cy=o.y+o.h/2,t2=Date.now();
   ctx.save();
-  // Water ripple always visible
-  ctx.strokeStyle='rgba(100,180,255,0.35)';ctx.lineWidth=3;
-  ctx.beginPath();ctx.ellipse(cx,cy+10,o.w*.7,12,0,0,Math.PI*2);ctx.stroke();
-  ctx.beginPath();ctx.ellipse(cx,cy+10,o.w*.5+Math.sin(o.ripple)*4,8,0,0,Math.PI*2);ctx.stroke();
   const phase=o.phase||'submerged';
   const emerge=phase==='emerging'?1-(o.phaseTimer/80):phase==='surface'?1:phase==='submerging'?(o.phaseTimer/60):0;
+
+  // Marqueur double cercle TOUJOURS visible pour signaler la présence (même submergé)
+  // Quand submergé : marqueur plus prononcé et animé pour avertir de sa position
+  const submergedFactor=1-emerge; // 1 quand totalement submergé, 0 quand en surface
+  // Cercle extérieur
+  ctx.strokeStyle=`rgba(100,180,255,${0.35+submergedFactor*0.25})`;
+  ctx.lineWidth=3;
+  ctx.beginPath();ctx.ellipse(cx,cy+10,o.w*.7,12,0,0,Math.PI*2);ctx.stroke();
+  // Cercle intérieur animé
+  ctx.beginPath();ctx.ellipse(cx,cy+10,o.w*.5+Math.sin(o.ripple)*4,8,0,0,Math.PI*2);ctx.stroke();
+  // Quand submergé : ajouter un 3e cercle d'avertissement et des bulles qui montent
+  if(submergedFactor>0.3){
+    ctx.strokeStyle=`rgba(180,220,255,${submergedFactor*0.5})`;
+    ctx.lineWidth=2;
+    const pulseR=o.w*.35+Math.sin(o.ripple*1.5)*6;
+    ctx.beginPath();ctx.ellipse(cx,cy+8,pulseR,pulseR*0.55,0,0,Math.PI*2);ctx.stroke();
+    // Petites bulles qui montent
+    ctx.fillStyle=`rgba(200,230,255,${submergedFactor*0.55})`;
+    for(let bi=0;bi<3;bi++){
+      const ba=o.ripple*0.7+bi*2.1;
+      const bx=cx+Math.sin(ba)*o.w*0.25;
+      const by=cy+8-((t2*0.05+bi*40)%30);
+      const br=1.5+Math.sin(ba)*0.5;
+      ctx.beginPath();ctx.arc(bx,by,br,0,Math.PI*2);ctx.fill();
+    }
+  }
+
   if(emerge>0.05){
     ctx.globalAlpha=Math.min(1,emerge*1.5);
     if(hippoLoaded&&imgHippo.naturalWidth>0){
-      // Image hippo : on ne montre que la moitié supérieure quand il émerge
+      // Image hippo : on ne montre que le sommet (museau, oreilles, yeux) — comme un vrai hippo qui nage
       const drawW=o.w*1.35,drawH=o.h*1.35;
-      // Décalage Y : monte progressivement avec emerge
-      const dy=cy-emerge*20-drawH/2;
-      // Clip : on coupe la moitié inférieure du PNG pour donner l'impression qu'il sort de l'eau
+      const dy=cy-emerge*18-drawH/2;
       ctx.save();
-      const visibleH=drawH*(0.45+emerge*0.45); // de 45% à 90% visible
+      // Visible : 35% à 60% selon l'émersion (au lieu de 45-90 %) → toujours immergé jusqu'au museau
+      const visibleH=drawH*(0.32+emerge*0.28);
       ctx.beginPath();
       ctx.rect(cx-drawW/2,dy,drawW,visibleH);
       ctx.clip();
       ctx.drawImage(imgHippo,cx-drawW/2,dy,drawW,drawH);
       ctx.restore();
+      // Petite ligne d'eau au niveau de la coupure pour effet "ligne de flottaison"
+      const waterY=dy+visibleH;
+      ctx.strokeStyle='rgba(140,200,255,0.5)';ctx.lineWidth=1.5;
+      ctx.beginPath();
+      for(let xx=-drawW/2;xx<drawW/2;xx+=4){
+        const wy=waterY+Math.sin(xx*0.15+o.ripple*2)*1.5;
+        if(xx===-drawW/2)ctx.moveTo(cx+xx,wy);
+        else ctx.lineTo(cx+xx,wy);
+      }
+      ctx.stroke();
     } else {
-      // Fallback dessin Canvas
-      ctx.fillStyle='#4a6e3a';ctx.beginPath();ctx.ellipse(cx,cy+10-emerge*20,o.w*.5,o.h*.35,0,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#5a8040';ctx.beginPath();ctx.ellipse(cx,cy-emerge*18,o.w*.38,o.h*.28,0,0,Math.PI*2);ctx.fill();
+      // Fallback dessin Canvas — version aussi plus immergée
+      const subOff=emerge*15; // au lieu de 20, plus subtil
+      ctx.fillStyle='#4a6e3a';ctx.beginPath();ctx.ellipse(cx,cy+12-subOff,o.w*.4,o.h*.22,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#5a8040';ctx.beginPath();ctx.ellipse(cx,cy-emerge*12,o.w*.3,o.h*.20,0,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#6a9850';
-      ctx.beginPath();ctx.ellipse(cx-8,cy-emerge*22,7,5,-.2,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.ellipse(cx+8,cy-emerge*22,7,5,.2,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(cx-8,cy-emerge*16,7,5,-.2,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(cx+8,cy-emerge*16,7,5,.2,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#2a3e18';
-      ctx.beginPath();ctx.ellipse(cx-6,cy-emerge*23,2,1.5,0,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.ellipse(cx+6,cy-emerge*23,2,1.5,0,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#ffe066';ctx.beginPath();ctx.ellipse(cx-10,cy-emerge*20,4,3,0,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.ellipse(cx+10,cy-emerge*20,4,3,0,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#222';ctx.beginPath();ctx.arc(cx-10,cy-emerge*20,2,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(cx+10,cy-emerge*20,2,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(cx-6,cy-emerge*17,2,1.5,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(cx+6,cy-emerge*17,2,1.5,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#ffe066';ctx.beginPath();ctx.ellipse(cx-10,cy-emerge*14,4,3,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(cx+10,cy-emerge*14,4,3,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#222';ctx.beginPath();ctx.arc(cx-10,cy-emerge*14,2,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(cx+10,cy-emerge*14,2,0,Math.PI*2);ctx.fill();
     }
     ctx.globalAlpha=1;
   }
