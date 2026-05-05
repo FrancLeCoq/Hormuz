@@ -159,7 +159,7 @@ let S,boat,objs,bulls,pBulls,exps,parts,savFX,keys,scY,af,tInt,sInt;
 let shk=0,shkD=0,frN=0,mTout,lTout;
 let spinA=0,spinSp=0,spinT=0,spinOn=false;
 let fireOn=false,fireCD=0;
-const FIRE_RATE=12;
+const FIRE_RATE=24;
 let colLock=false,narrowPassages=[];
 let paused=false;
 let nextFrancBonus=100;
@@ -306,7 +306,7 @@ function doFire(){
   const lv=getLv();
   // Lv 4-5: tir auto régulier; Lv 6+: mitraillette
   const isMachineGun=lv>=6;
-  const cooldown=isMachineGun?FIRE_RATE:20; // niveau 4-5 : tir constant (20 frames ≈ 3 tirs/sec)
+  const cooldown=isMachineGun?FIRE_RATE:40; // niveau 4-5 : tir auto régulier (40 frames ≈ 1,5 tirs/sec)
   const bx=boat.x+boat.w/2,by=boat.y;
   // Cibles élargies : tortue, serpent, mine, crocodile, baril, ennemis, requin, aigle
   const PRIORITY=['homing_enemy','enemy','shark','eagle','croco','snake','mine','barrel','turtle'];
@@ -410,7 +410,7 @@ function spawnO(){
     else objs.push({type:'trunk',x:RL()+10+Math.random()*(RW()-len-20),y:-thick,w:len,h:thick,speed:spd,ang:(Math.random()-.5)*.3,vertical:false,mossPts:gMoss(),branches:gBr(len),wb,hp:2,maxHp:2});
   }
   else if(t==='croco'){const sc=0.8+Math.random()*.4;objs.push({type:'croco',x:rx(),y:-55*sc,w:19*sc,h:49*sc,speed:spd,dir:Math.random()<.5?-1:1,sway:Math.random()*Math.PI*2,sc,tail:Math.random()*Math.PI*2,wb,hp:5,maxHp:5});}
-  else if(t==='mine'){const vx=(Math.random()-.5)*2.2;objs.push({type:'mine',x:rx(),y:-17,w:17,h:17,speed:spd*.5,bob:Math.random()*Math.PI*2,vx,zig:0,zigP:45+Math.random()*60,dead:false,wb});}
+  else if(t==='mine'){const vx=(Math.random()-.5)*2.2;objs.push({type:'mine',x:rx(),y:-17,w:17,h:17,speed:spd*.5,bob:Math.random()*Math.PI*2,vx,zig:0,zigP:45+Math.random()*60,dead:false,hp:3,maxHp:3,wb});}
   else if(t==='enemy')objs.push({type:'enemy',x:rx(),y:-72,w:60,h:66,speed:spd*.75,wb,hp:5,maxHp:5});
   else if(t==='homing_enemy'){const smart=lv>=10;objs.push({type:'homing_enemy',x:rx(),y:-72,w:60,h:66,speed:spd*.6,smart,shootTimer:40+Math.floor(Math.random()*40),vx:0,vy:spd*.6,hp:3,wb:smart?null:wb});}
   else if(t==='whirlpool')objs.push({type:'whirlpool',x:rx(),y:-48,w:48,h:48,speed:spd*.28,rot:0,wb});
@@ -419,7 +419,7 @@ function spawnO(){
   else if(t==='island'){const iW=32+Math.random()*24,iH=48+Math.random()*36,ix=ri+rw*.5-iW*.5+(Math.random()-.5)*rw*.25;objs.push({type:'island',x:ix,y:-iH,w:iW,h:iH,speed:spd*.4,trees:Math.floor(2+Math.random()*3)});}
   else if(t==='hippo'){
     const hx=rx();
-    objs.push({type:'hippo',x:hx-22,y:-50,w:44,h:50,speed:spd*.25,phase:'submerged',phaseTimer:120+Math.floor(Math.random()*90),hp:10,maxHp:10,ripple:0});
+    objs.push({type:'hippo',x:hx-32,y:-56,w:64,h:54,speed:spd*.25,phase:'submerged',phaseTimer:120+Math.floor(Math.random()*90),hp:10,maxHp:10,ripple:0,hvx:0,hvxTarget:(Math.random()-.5)*0.7,hvxTimer:0});
   }
   else if(t==='turtle'){
     // Tortue : obstacle lent — sprite vertical (proportions 192x304 du PNG)
@@ -438,7 +438,7 @@ function spawnO(){
     const snakeX=rx();objs.push({type:'snake',baseX:snakeX,amplitude:RW()*.35,x:sx,y:-20,w:8,h:8,speed:spd*.6,angle:Math.PI/2,segs:Array.from({length:14},(_,i)=>({x:sx,y:-20-i*10})),hp:3,maxHp:3,wb:{wx:2.8+Math.random()*1.4,wf:0.022+Math.random()*.01,wp:Math.random()*Math.PI*2}});
   }
   else if(t==='barrel'){
-    objs.push({type:'barrel',x:rx(),y:-28,w:24,h:28,speed:spd*.55,bob:Math.random()*Math.PI*2,hp:1,maxHp:1});
+    objs.push({type:'barrel',x:rx(),y:-28,w:24,h:28,speed:spd*.55,bob:Math.random()*Math.PI*2,hp:3,maxHp:3});
   }
   else if(t==='eagle'){
     const tx=rx();
@@ -464,19 +464,26 @@ function spawnWalkingTurtle(){
   const lv=getLv();
   if(lv<4)return; // disponibles à partir du même palier que les tortues normales
   const side=Math.random()<0.5?'left':'right';
-  const y=80+Math.random()*(H()-200);
   const tw=32,th=28;
-  // Position de départ : sur la pelouse, près du bord extérieur
-  const startX=side==='left'?(RL()-tw-10-Math.random()*30):(RR()+10+Math.random()*30);
-  // Cible : juste au-delà du bord de la rivière (pour le décollage du saut)
+  // Direction verticale aléatoire : descend ou monte le long de la berge
+  const verticalDir=Math.random()<0.5?1:-1; // 1 = descend, -1 = monte
+  // Position Y de spawn : selon direction, démarre en haut ou en bas hors écran
+  const startY=verticalDir>0?(-th-10):(H()+10);
+  // Position X : sur la berge, un peu plus loin du bord extérieur
+  const startX=side==='left'?(RL()-tw-15-Math.random()*40):(RR()+15+Math.random()*40);
+  // Position Y où la tortue va tourner pour aller vers l'eau (point d'inflexion)
+  const turnY=80+Math.random()*(H()-200);
+  // Cible : juste au-delà du bord de la rivière
   const edgeX=side==='left'?(RL()+5):(RR()-tw-5);
   objs.push({
     type:'turtle_walking',
-    x:startX,y:y,w:tw,h:th,
+    x:startX,y:startY,w:tw,h:th,
     speed:0,
-    vx:side==='left'?0.65:-0.65,
+    vx:0,vy:verticalDir*0.55, // démarre en mouvement vertical
     targetEdgeX:edgeX,
-    state:'walking', // walking → jumping → (devient turtle classique)
+    turnY, // Y où elle va tourner vers l'eau
+    verticalDir,
+    state:'walking_vertical', // walking_vertical → walking_horizontal → jumping → turtle
     side,
     walkPhase:Math.random()*Math.PI*2,
     jumpT:0,jumpStartX:0,jumpStartY:0,jumpEndX:0,jumpEndY:0,
@@ -768,7 +775,28 @@ function update(){
     if(o.type==='croco'){o.sway+=.04;o.x+=Math.sin(o.sway)*o.dir*.8;o.x=Math.max(RL()+4,Math.min(RR()-o.w-4,o.x));o.tail+=.09;}
     if(o.type==='shark'){o.sway+=.035;o.x+=Math.sin(o.sway)*o.dir*.9;o.x=Math.max(RL()+4,Math.min(RR()-o.w-4,o.x));}
     if(o.type==='whirlpool')o.rot+=.07;
-    if(o.type==='hippo'){o.ripple+=0.08;o.phaseTimer--;if(o.phaseTimer<=0){if(o.phase==='submerged'){o.phase='emerging';o.phaseTimer=80;}else if(o.phase==='emerging'){o.phase='surface';o.phaseTimer=100+Math.floor(Math.random()*60);}else if(o.phase==='surface'){o.phase='submerging';o.phaseTimer=60;}else{o.phase='submerged';o.phaseTimer=120+Math.floor(Math.random()*90);}}}
+    if(o.type==='hippo'){
+      o.ripple+=0.08;
+      o.phaseTimer--;
+      // Mouvement horizontal fluide : interpolation vers une cible qui change toutes les ~3-4s
+      if(o.hvxTimer===undefined)o.hvxTimer=0;
+      if(o.hvx===undefined)o.hvx=0;
+      if(o.hvxTarget===undefined)o.hvxTarget=0;
+      o.hvxTimer--;
+      if(o.hvxTimer<=0){
+        // Nouvelle cible aléatoire de vitesse latérale
+        o.hvxTarget=(Math.random()-0.5)*1.4;
+        o.hvxTimer=180+Math.floor(Math.random()*120); // 3-5s avant de changer
+      }
+      // Interpolation douce vers la vitesse cible (lerp lent)
+      o.hvx+=(o.hvxTarget-o.hvx)*0.015;
+      // Application avec contrainte aux bords de la rivière
+      o.x+=o.hvx;
+      const ri=RL(),rr=RR();
+      if(o.x<ri+5){o.x=ri+5;o.hvxTarget=Math.abs(o.hvxTarget);}
+      if(o.x+o.w>rr-5){o.x=rr-5-o.w;o.hvxTarget=-Math.abs(o.hvxTarget);}
+      if(o.phaseTimer<=0){if(o.phase==='submerged'){o.phase='emerging';o.phaseTimer=80;}else if(o.phase==='emerging'){o.phase='surface';o.phaseTimer=100+Math.floor(Math.random()*60);}else if(o.phase==='surface'){o.phase='submerging';o.phaseTimer=60;}else{o.phase='submerged';o.phaseTimer=120+Math.floor(Math.random()*90);}}
+    }
     if(o.type==='snake'){o.segs[0].x+=Math.sin(frN*o.wb.wf+o.wb.wp)*o.wb.wx;o.segs[0].x=Math.max(RL()+10,Math.min(RR()-10,o.segs[0].x));o.segs[0].y+=o.speed;for(let s=1;s<o.segs.length;s++){const dx=o.segs[s-1].x-o.segs[s].x,dy=o.segs[s-1].y-o.segs[s].y,d=Math.hypot(dx,dy)||1;o.segs[s].x+=dx/d*(d-10);o.segs[s].y+=dy/d*(d-10);}o.x=o.segs[0].x-4;o.y=o.segs[0].y-4;}
     if(o.type==='eagle'){if(o.phase==='circle'){o.circleAngle+=0.04;o.x=boat.x+boat.w/2+Math.cos(o.circleAngle)*o.circleR-o.w/2;o.y=Math.max(-10,boat.y-120+Math.sin(o.circleAngle*0.5)*30);o.diveTimer--;if(o.diveTimer<=0){o.phase='dive';const dx=boat.x+boat.w/2-o.x,dy=boat.y-o.y,d=Math.hypot(dx,dy)||1;o.vx=dx/d*12;o.vy=dy/d*12;}}else if(o.phase==='dive'){o.x+=o.vx;o.y+=o.vy;if(o.y>H()+50)o.y=H()+200;}}
     if(o.type==='current_zone'){if(boat.sink<=0){const inZone=rO(boat.x,boat.y,boat.w,boat.h,o.x,o.y,o.w,o.h);if(inZone){boat.x+=o.dir*(o.strength*2.5);boat.x=Math.max(RL()+4,Math.min(RR()-boat.w-4,boat.x));}}}
@@ -1004,8 +1032,9 @@ function drawSubmarines(){
       // Scale to fit nicely — sub PNG is ~294×1044px, we want it ~80px wide in game
       const targetW=80, ratio=imgSub.naturalHeight/imgSub.naturalWidth;
       const dw=targetW, dh=targetW*ratio;
-      // Filtre plus doux : juste un léger contraste pour éviter de "laver" les noirs
-      ctx.filter='brightness(0.85) contrast(1.2) saturate(0.9)';
+      // Désaturation forte pour étouffer les pixels bleus résiduels du PNG (ex: tâche sur l'aileron)
+      // tout en préservant le noir profond
+      ctx.filter='brightness(0.78) contrast(1.35) saturate(0.25)';
       ctx.drawImage(imgSub,-dw/2,-dh/2,dw,dh);
       ctx.filter='none';
     } else {
@@ -1138,8 +1167,8 @@ function drawO(o){
     case'turtle_walking':dWalkingTurtle(o);break;
   }
   ctx.globalAlpha=1;
-  // HP bar only from level 6 (when machine gun unlocked)
-  if(o.hp!==undefined&&o.maxHp&&o.type!=='homing_enemy'&&getLv()>=4){
+  // HP bar only from level 4, and only after first hit (hp < maxHp)
+  if(o.hp!==undefined&&o.maxHp&&o.hp<o.maxHp&&o.type!=='homing_enemy'&&getLv()>=4){
     const bw=o.w+8,bh=4,bx=o.x-4,by=o.y-8;
     ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(bx,by,bw,bh);
     const pct=o.hp/o.maxHp;
@@ -1267,14 +1296,23 @@ function dTurtle(o){
 function dWalkingTurtle(o){
   ctx.save();
   let yOffset=0;
-  if(o.state==='walking'){
-    // Léger bondissement pendant la marche
+  if(o.state==='walking_vertical'||o.state==='walking_horizontal'){
     yOffset=Math.abs(Math.sin(o.walkPhase))*-2.5;
   }
   ctx.translate(o.x+o.w/2,o.y+o.h/2+yOffset);
-  // Flip horizontal selon la direction de marche
-  if(o.vx>0)ctx.scale(-1,1); // marche vers la droite : retournée
-  ctx.rotate(o.rot||0);
+  // Orientation : tortue toujours vue de dessus dans son PNG (museau vers le haut par défaut)
+  if(o.state==='walking_vertical'){
+    // Marche verticale : tête dans le sens de la marche
+    if(o.verticalDir>0)ctx.rotate(Math.PI); // descend : tête en bas
+    // sinon (monte) : orientation par défaut (tête en haut)
+  } else if(o.state==='walking_horizontal'){
+    // Marche horizontale : tête côté direction
+    ctx.rotate(o.vx>0?Math.PI/2:-Math.PI/2);
+  } else if(o.state==='jumping'){
+    // Pendant le saut : oriente vers la cible
+    ctx.rotate(o.side==='left'?Math.PI/2:-Math.PI/2);
+    ctx.rotate(o.rot||0);
+  }
   if(turtleLoaded&&imgTurtle.naturalWidth>0){
     const drawW=o.w*1.15,drawH=o.h*1.15;
     ctx.drawImage(imgTurtle,-drawW/2,-drawH/2,drawW,drawH);
@@ -1283,7 +1321,7 @@ function dWalkingTurtle(o){
     ctx.fillStyle='#7fa83a';ctx.beginPath();ctx.arc(0,-o.h*0.28,o.w*0.32,0,Math.PI*2);ctx.fill();
   }
   ctx.restore();
-  // Petite ombre au sol pendant le saut pour le côté "elle saute"
+  // Ombre au sol pendant le saut
   if(o.state==='jumping'){
     const groundY=o.jumpStartY+(o.jumpEndY-o.jumpStartY)*o.jumpT+o.h/2;
     const arcH=Math.sin(o.jumpT*Math.PI)*45;
@@ -1841,19 +1879,32 @@ function triggerShakeSoft(){shk=4;shkD=8;}
 function updateNewObstacles(){
   if(!S||!S.running)return;
 
-  // ── TORTUES MARCHEUSES : marche pelouse → saut → eau ──
+  // ── TORTUES MARCHEUSES : marche le long de la berge → tourne → marche vers l'eau → saut ──
   for(let i=objs.length-1;i>=0;i--){
     const o=objs[i];if(!o||o.type!=='turtle_walking')continue;
-    if(o.state==='walking'){
+    if(o.state==='walking_vertical'){
+      // Marche le long de la berge (haut↔bas)
+      o.y+=o.vy;
+      o.walkPhase+=0.16;
+      // Atteint le point de virage → tourne vers l'eau
+      const reachedTurn=o.verticalDir>0?(o.y>=o.turnY):(o.y<=o.turnY);
+      if(reachedTurn){
+        o.state='walking_horizontal';
+        o.vy=0;
+        o.vx=o.side==='left'?0.65:-0.65;
+      }
+      // Sortie d'écran si jamais elle dépasse sans avoir tourné
+      if(o.y>H()+50||o.y<-60){objs.splice(i,1);continue;}
+    } else if(o.state==='walking_horizontal'){
+      // Marche horizontalement vers l'eau
       o.x+=o.vx;
-      o.walkPhase+=0.18; // démarche bondissante
+      o.walkPhase+=0.18;
       // Atteint le bord de la rivière → déclenchement du saut
       const reached=o.side==='left'?(o.x>=o.targetEdgeX):(o.x<=o.targetEdgeX);
       if(reached){
         o.state='jumping';
         o.jumpT=0;
         o.jumpStartX=o.x;o.jumpStartY=o.y;
-        // Atterrit dans la rivière, au tiers ou aux 2/3 selon le côté
         const ri=RL(),rw=RW();
         o.jumpEndX=o.side==='left'?(ri+rw*0.3+Math.random()*rw*0.2):(ri+rw*0.5+Math.random()*rw*0.2);
         o.jumpEndY=o.y+15+Math.random()*20;
