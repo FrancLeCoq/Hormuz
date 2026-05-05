@@ -366,18 +366,11 @@ function spawnO(){
   const mg=Math.floor(rw*0.1);
   const rx=()=>ri+mg+Math.random()*(rw-mg*2);
   const spd=(1.3+lv*0.35)*(0.85+Math.random()*0.5)*0.506;
-  // Système de poids équitable : chaque type a un poids qui dépend du niveau
-  // Les poussins (positif) restent fréquents, mais chaque obstacle/danger a un poids similaire
-  // pour garantir la diversité plutôt que les doublons aléatoires
+  // Système de poids équitable
   const weighted=[];
   const W_PUSH=(type,w)=>{for(let k=0;k<w;k++)weighted.push(type);};
-  // Poussins : toujours présents en quantité raisonnable
   W_PUSH('chick',6);
-  // Obstacles de base disponibles dès le départ
-  W_PUSH('rock',3);
-  W_PUSH('trunk',3);
-  W_PUSH('croco',3);
-  // Progression par niveau — chaque type a un poids équivalent
+  W_PUSH('rock',3);W_PUSH('trunk',3);W_PUSH('croco',3);
   if(lv>=2) W_PUSH('mine',3);
   if(lv>=3) W_PUSH('hippo',3);
   if(lv>=4) W_PUSH('enemy',3);
@@ -391,16 +384,29 @@ function spawnO(){
   if(lv>=7) W_PUSH('shark',3);
   if(lv>=8) W_PUSH('island',2);
   if(lv>=8) W_PUSH('eagle',3);
-  // Aux niveaux très élevés, légère sur-représentation des dangers majeurs
   if(lv>=11) W_PUSH('homing_enemy',1);
-  const types=weighted;
-  // Golden chick: always rare
-  if(Math.random()<0.05)types.push('golden_chick');
+  if(Math.random()<0.05)weighted.push('golden_chick');
+
+  // Limites de simultanéité par type : évite 4 hippos ou 3 crocos en même temps
+  const MAX_SIMULTANEOUS={
+    hippo:1, croco:2, shark:1, snake:1, eagle:1, homing_enemy:2,
+    enemy:2, mine:2, barrel:2, whirlpool:1, island:1, turtle:2, rock:3, trunk:3
+  };
+  // Compter les objets actuellement à l'écran par type
+  const onScreen={};
+  for(const o of objs){onScreen[o.type]=(onScreen[o.type]||0)+1;}
+  // Filtrer les types qui ont atteint leur limite (retirer de la liste)
+  const types=weighted.filter(type=>{
+    const max=MAX_SIMULTANEOUS[type];
+    return !max||(onScreen[type]||0)<max;
+  });
+  // Si tout est filtré (cas rare), laisser passer uniquement les poussins
+  if(types.length===0)types.push('chick');
   const t=types[Math.floor(Math.random()*types.length)];
   const wb=nWobble(lv);
   if(t==='chick'){
-    // Niveau 4+ : 3 poussins par spawn (espacés), sinon 1
-    const chickCount=(lv>=4)?3:1;
+    // 3 poussins par spawn dans tous les niveaux, espacés sur la largeur
+    const chickCount=3;
     for(let ci=0;ci<chickCount;ci++){
       const r2=Math.random();let sz='s',pts=1,sw=16,sh=17;
       if(r2<0.2){sz='l';pts=3;sw=23;sh=24;}else if(r2<0.53){sz='m';pts=2;sw=19;sh=20;}
@@ -1038,7 +1044,11 @@ function drawSubmarines(){
     if(subLoaded&&imgSub.naturalWidth>0){
       const targetW=80, ratio=imgSub.naturalHeight/imgSub.naturalWidth;
       const dw=targetW, dh=targetW*ratio;
+      // Légèrement éclairci : le corps du sub reste sombre mais la casquette rouge
+      // et les cheveux jaunes du personnage ressortent bien
+      ctx.filter='brightness(1.35) contrast(1.1)';
       ctx.drawImage(imgSub,-dw/2,-dh/2,dw,dh);
+      ctx.filter='none';
     } else {
       ctx.fillStyle='#222244';ctx.beginPath();ctx.ellipse(0,0,12,40,0,0,Math.PI*2);ctx.fill();
     }
