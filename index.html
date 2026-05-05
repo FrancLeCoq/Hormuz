@@ -102,7 +102,7 @@ function resize(){C.width=innerWidth;C.height=innerHeight;}
 addEventListener('resize',resize);resize();
 const W=()=>C.width,H=()=>C.height;
 const RL=()=>Math.floor(W()*0.17),RR=()=>Math.floor(W()*0.83),RW=()=>RR()-RL();
-const PTS_LVL=30,MAX_LVL=11,INV=300;
+const PTS_LVL=30,MAX_LVL=11,INV=600;
 let MAX_LIVES=1;
 const MORT_SUBITE=11;
 const isMob=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)||W()<700;
@@ -399,9 +399,16 @@ function spawnO(){
   const t=types[Math.floor(Math.random()*types.length)];
   const wb=nWobble(lv);
   if(t==='chick'){
-    const r2=Math.random();let sz='s',pts=1,sw=16,sh=17;
-    if(r2<0.2){sz='l';pts=3;sw=23;sh=24;}else if(r2<0.53){sz='m';pts=2;sw=19;sh=20;}
-    objs.push({type:'chick',x:rx(),y:-sh,w:sw,h:sh,speed:spd*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb});
+    // Niveau 4+ : 3 poussins par spawn (espacés), sinon 1
+    const chickCount=(lv>=4)?3:1;
+    for(let ci=0;ci<chickCount;ci++){
+      const r2=Math.random();let sz='s',pts=1,sw=16,sh=17;
+      if(r2<0.2){sz='l';pts=3;sw=23;sh=24;}else if(r2<0.53){sz='m';pts=2;sw=19;sh=20;}
+      // Offset X pour les espacer : centré + petite dispersion aléatoire
+      const xOff=chickCount>1?((ci/(chickCount-1)-.5)*RW()*0.55):0;
+      const cxPos=Math.max(RL()+10,Math.min(RR()-sw-10, RL()+RW()/2-sw/2+xOff));
+      objs.push({type:'chick',x:cxPos,y:-sh,w:sw,h:sh,speed:spd*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb});
+    }
   }
   else if(t==='rock'){const big=Math.random()<0.3,rw2=big?32:22,rh=big?28:20;objs.push({type:'rock',x:rx(),y:-rh,w:rw2,h:rh,speed:spd,wb,hp:2,maxHp:2});}
   else if(t==='trunk'){
@@ -1029,14 +1036,9 @@ function drawSubmarines(){
     ctx.rotate(Math.PI);
 
     if(subLoaded&&imgSub.naturalWidth>0){
-      // Scale to fit nicely — sub PNG is ~294×1044px, we want it ~80px wide in game
       const targetW=80, ratio=imgSub.naturalHeight/imgSub.naturalWidth;
       const dw=targetW, dh=targetW*ratio;
-      // Désaturation forte pour étouffer les pixels bleus résiduels du PNG (ex: tâche sur l'aileron)
-      // tout en préservant le noir profond
-      ctx.filter='brightness(0.78) contrast(1.35) saturate(0.25)';
       ctx.drawImage(imgSub,-dw/2,-dh/2,dw,dh);
-      ctx.filter='none';
     } else {
       ctx.fillStyle='#222244';ctx.beginPath();ctx.ellipse(0,0,12,40,0,0,Math.PI*2);ctx.fill();
     }
@@ -1295,24 +1297,12 @@ function dTurtle(o){
 // ── TURTLE marcheuse (sur pelouse, puis saute dans l'eau) ──
 function dWalkingTurtle(o){
   ctx.save();
-  let yOffset=0;
-  if(o.state==='walking_vertical'||o.state==='walking_horizontal'){
-    yOffset=Math.abs(Math.sin(o.walkPhase))*-2.5;
-  }
+  // Petit bondissement vertical pendant la marche
+  const yOffset=(o.state==='walking_vertical'||o.state==='walking_horizontal')
+    ? Math.abs(Math.sin(o.walkPhase))*-2.5 : 0;
   ctx.translate(o.x+o.w/2,o.y+o.h/2+yOffset);
-  // Orientation : tortue toujours vue de dessus dans son PNG (museau vers le haut par défaut)
-  if(o.state==='walking_vertical'){
-    // Marche verticale : tête dans le sens de la marche
-    if(o.verticalDir>0)ctx.rotate(Math.PI); // descend : tête en bas
-    // sinon (monte) : orientation par défaut (tête en haut)
-  } else if(o.state==='walking_horizontal'){
-    // Marche horizontale : tête côté direction
-    ctx.rotate(o.vx>0?Math.PI/2:-Math.PI/2);
-  } else if(o.state==='jumping'){
-    // Pendant le saut : oriente vers la cible
-    ctx.rotate(o.side==='left'?Math.PI/2:-Math.PI/2);
-    ctx.rotate(o.rot||0);
-  }
+  // Tête TOUJOURS en haut, jamais de rotation — juste un léger tangage pendant le saut
+  if(o.state==='jumping') ctx.rotate((o.rot||0)*0.3); // tangage très léger uniquement
   if(turtleLoaded&&imgTurtle.naturalWidth>0){
     const drawW=o.w*1.15,drawH=o.h*1.15;
     ctx.drawImage(imgTurtle,-drawW/2,-drawH/2,drawW,drawH);
