@@ -1187,27 +1187,97 @@ function drawRiver(ms){
   drawBank(0,ri);drawBank(rr,W()-rr);
 }
 function drawBank(x,w){
-  const g=['#175208','#1e6a09','#145006','#226614','#0e3d05','#1a5808','#0b3204'],d=['#0a2e03','#102d04','#082403'];
-  // Texture de fond fixe (pas de défilement de la texture de base)
-  for(let dy=0;dy<H();dy+=4){
-    for(let dx=0;dx<w;dx+=4){
-      const pct=x===0?(w-dx)/w:dx/w;
-      const hash=((dx*13+dy*7)>>>0)%7;
-      ctx.fillStyle=pct>.12?g[hash%g.length]:d[hash%d.length];
-      ctx.fillRect(x+dx,dy,4,4);
+  const g=['#175208','#1e6a09','#145006','#226614','#0e3d05','#1a5808','#0b3204'];
+  const d=['#0a2e03','#102d04','#082403'];
+  const isLeft=x===0;
+  // ── Fond de base uni (couleur dominante, pas de mosaïque fixe) ──
+  ctx.fillStyle='#175208';ctx.fillRect(x,0,w,H());
+
+  // ── Bandes herbeuses qui défilent vers le bas ──
+  const stripeH=18;
+  const stripeOff=scY%stripeH;
+  for(let dy=-stripeH+stripeOff;dy<H()+stripeH;dy+=stripeH){
+    // Ligne alternée légèrement plus claire / foncée
+    const even=Math.floor((dy-stripeOff)/stripeH+1000)%2===0;
+    ctx.fillStyle=even?'#1e6a09':'#145006';
+    ctx.fillRect(x,dy,w,stripeH*.5);
+  }
+
+  // ── Éléments de décor scrollants : herbe, fleurs, cailloux, buissons ──
+  const items=[
+    // [offsetY dans le cycle, couleur, type, taille]
+    {oy:0,  col:'#ddcc44',type:'flower',r:3},
+    {oy:8,  col:'#88cc44',type:'grass'},
+    {oy:18, col:'#cc5555',type:'berry',r:2.5},
+    {oy:26, col:'rgba(100,80,60,0.8)',type:'rock',rx:5,ry:3.5},
+    {oy:38, col:'#55aa22',type:'bush',rx:6,ry:4},
+    {oy:50, col:'#ddcc44',type:'flower',r:2},
+    {oy:62, col:'#88cc44',type:'grass'},
+    {oy:74, col:'rgba(80,60,40,0.7)',type:'rock',rx:4,ry:2.5},
+    {oy:86, col:'#cc8833',type:'mushroom'},
+    {oy:98, col:'#55aa22',type:'bush',rx:7,ry:5},
+  ];
+  const cycleH=110; // hauteur d'un cycle complet de décor
+  const cycleOff=scY%cycleH;
+
+  for(let rep=-1;rep<Math.ceil(H()/cycleH)+1;rep++){
+    const baseY=rep*cycleH+cycleOff;
+    for(const it of items){
+      const iy=baseY+it.oy;
+      if(iy<-12||iy>H()+12)continue;
+      // Position X varie selon la profondeur (items near river edge vs far edge)
+      const fx=isLeft
+        ? x+w*(0.3+0.4*((it.oy*17+rep*31)%7)/6)
+        : x+w*(0.2+0.4*((it.oy*13+rep*23)%7)/6);
+      ctx.fillStyle=it.col;
+      if(it.type==='flower'){
+        // Fleur : pétales + centre
+        ctx.beginPath();ctx.arc(fx,iy,it.r,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#fff8aa';ctx.beginPath();ctx.arc(fx,iy,it.r*.5,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=it.col;
+      } else if(it.type==='grass'){
+        // Brins d'herbe
+        ctx.strokeStyle='#44aa22';ctx.lineWidth=1.5;
+        for(let gi=0;gi<4;gi++){
+          ctx.beginPath();
+          ctx.moveTo(fx+gi*3-4,iy+5);
+          ctx.quadraticCurveTo(fx+gi*3-3+Math.sin(it.oy+gi)*3,iy-4,fx+gi*3-2,iy-8);
+          ctx.stroke();
+        }
+      } else if(it.type==='berry'){
+        ctx.beginPath();ctx.arc(fx,iy,it.r,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(fx+6,iy+3,it.r*.8,0,Math.PI*2);ctx.fill();
+      } else if(it.type==='rock'){
+        ctx.beginPath();ctx.ellipse(fx,iy,it.rx,it.ry,0.2,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='rgba(180,160,130,0.2)';
+        ctx.beginPath();ctx.ellipse(fx-1,iy-1,it.rx*.5,it.ry*.5,0.2,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=it.col;
+      } else if(it.type==='bush'){
+        ctx.beginPath();ctx.ellipse(fx,iy,it.rx,it.ry,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='rgba(255,255,255,0.08)';
+        ctx.beginPath();ctx.ellipse(fx-2,iy-1,it.rx*.5,it.ry*.6,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=it.col;
+      } else if(it.type==='mushroom'){
+        // Chapeau
+        ctx.fillStyle='#cc4422';
+        ctx.beginPath();ctx.ellipse(fx,iy-3,5,4,0,0,Math.PI*2);ctx.fill();
+        // Pied
+        ctx.fillStyle='#eeddbb';
+        ctx.fillRect(fx-2,iy-1,4,5);
+        // Points blancs
+        ctx.fillStyle='rgba(255,255,255,0.8)';
+        ctx.beginPath();ctx.arc(fx-1,iy-4,1,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(fx+2,iy-3,0.7,0,Math.PI*2);ctx.fill();
+      }
     }
   }
-  // River edge shadow
-  ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(x===0?x+w-8:x,0,8,H());
-  // Vegetation qui défile à la même vitesse que les obstacles (scY direct)
-  const vegSpacing=52;
-  const vegOffset=scY%vegSpacing; // synchro exacte avec obstacles
-  for(let dy=-vegSpacing+vegOffset;dy<H()+vegSpacing;dy+=vegSpacing){
-    const fx=x===0?x+w*.42:x+w*.45;
-    ctx.fillStyle='#ddcc44';ctx.beginPath();ctx.arc(fx,dy,2.5,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#cc5555';ctx.beginPath();ctx.arc(fx+9,dy+22,2,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='rgba(100,80,60,0.7)';ctx.beginPath();ctx.ellipse(fx-6,dy+38,4,3,0.3,0,Math.PI*2);ctx.fill();
-  }
+
+  // ── Ombre bord rivière ──
+  const edgeX=isLeft?x+w-8:x;
+  const grad=ctx.createLinearGradient(edgeX,0,edgeX+(isLeft?8:-8),0);
+  grad.addColorStop(0,'rgba(0,0,0,0.4)');
+  grad.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=grad;ctx.fillRect(edgeX,0,8,H());
 }
 function drawNarrow(){
   if(getLv()<9)return;
