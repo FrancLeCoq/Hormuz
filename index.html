@@ -159,7 +159,7 @@ let S,boat,objs,bulls,pBulls,exps,parts,savFX,keys,scY,af,tInt,sInt;
 let shk=0,shkD=0,frN=0,mTout,lTout;
 let spinA=0,spinSp=0,spinT=0,spinOn=false;
 let fireOn=false,fireCD=0;
-const FIRE_RATE=48;
+const FIRE_RATE=96;
 let colLock=false,narrowPassages=[];
 let paused=false;
 let nextFrancBonus=100;
@@ -306,7 +306,7 @@ function doFire(){
   const lv=getLv();
   // Lv 4-5: tir auto régulier; Lv 6+: mitraillette
   const isMachineGun=lv>=6;
-  const cooldown=isMachineGun?FIRE_RATE:80;
+  const cooldown=isMachineGun?FIRE_RATE:160;
   const bx=boat.x+boat.w/2,by=boat.y;
   // Cibles élargies : tortue, serpent, mine, crocodile, baril, ennemis, requin, aigle
   const PRIORITY=['homing_enemy','enemy','shark','eagle','croco','snake','mine','barrel','turtle'];
@@ -369,7 +369,7 @@ function spawnO(){
   // Système de poids équitable
   const weighted=[];
   const W_PUSH=(type,w)=>{for(let k=0;k<w;k++)weighted.push(type);};
-  W_PUSH('chick',6);
+  W_PUSH('chick',2); // timer dédié gère le flux régulier de poussins
   W_PUSH('rock',3);W_PUSH('trunk',3);W_PUSH('croco',3);
   if(lv>=2) W_PUSH('mine',3);
   if(lv>=3) W_PUSH('hippo',3);
@@ -405,16 +405,11 @@ function spawnO(){
   const t=types[Math.floor(Math.random()*types.length)];
   const wb=nWobble(lv);
   if(t==='chick'){
-    // 2 poussins par spawn (÷2 par rapport aux 3 précédents)
-    const chickCount=2;
-    for(let ci=0;ci<chickCount;ci++){
-      const r2=Math.random();let sz='s',pts=1,sw=16,sh=17;
-      if(r2<0.2){sz='l';pts=3;sw=23;sh=24;}else if(r2<0.53){sz='m';pts=2;sw=19;sh=20;}
-      // Offset X pour les espacer : centré + petite dispersion aléatoire
-      const xOff=chickCount>1?((ci/(chickCount-1)-.5)*RW()*0.55):0;
-      const cxPos=Math.max(RL()+10,Math.min(RR()-sw-10, RL()+RW()/2-sw/2+xOff));
-      objs.push({type:'chick',x:cxPos,y:-sh,w:sw,h:sh,speed:spd*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb});
-    }
+    // 1 poussin par vague (÷2), positionné aléatoirement dans la rivière
+    const r2=Math.random();let sz='s',pts=1,sw=16,sh=17;
+    if(r2<0.2){sz='l';pts=3;sw=23;sh=24;}else if(r2<0.53){sz='m';pts=2;sw=19;sh=20;}
+    const cxPos=RL()+sw+Math.random()*(RW()-sw*2);
+    objs.push({type:'chick',x:cxPos,y:-sh,w:sw,h:sh,speed:spd*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb});
   }
   else if(t==='rock'){const big=Math.random()<0.3,rw2=big?32:22,rh=big?28:20;objs.push({type:'rock',x:rx(),y:-rh,w:rw2,h:rh,speed:spd,wb,hp:2,maxHp:2});}
   else if(t==='trunk'){
@@ -558,11 +553,10 @@ function updateHomingEnemies(){
     // Shoot straight down (along river direction)
     o.shootTimer--;
     if(o.shootTimer<=0){
-      const sp=1.5+Math.random()*1;
+      const sp=0.5+Math.random()*0.33;
       const bx=o.x+o.w/2;
-      // Two bullets side by side, straight down
-      bulls.push({x:bx-6,y:o.y+o.h,vx:0,vy:sp,life:220,r:6});
-      bulls.push({x:bx+6,y:o.y+o.h,vx:0,vy:sp,life:220,r:6});
+      bulls.push({x:bx-6,y:o.y+o.h,vx:0,vy:sp,life:500,r:6});
+      bulls.push({x:bx+6,y:o.y+o.h,vx:0,vy:sp,life:500,r:6});
       o.shootTimer=50+Math.floor(Math.random()*40);
       spawnB(bx,o.y+o.h*.9,'#ff8800',3);
     }
@@ -767,9 +761,18 @@ function update(){
   if(!S||!S.running)return;
   frN++;handleInput();
   if(frN%60===0){updateAmbientSound();}
+  // Poussin régulier : 1 poussin toutes les ~3s (180 frames), espacé uniformément
+  if(frN%180===90){
+    const lv2=getLv(),spd2=(1.3+lv2*0.35)*(0.85+Math.random()*0.3)*0.169;
+    const wb2=nWobble(lv2);
+    const r2=Math.random();let sz='s',pts=1,sw=16,sh=17;
+    if(r2<0.2){sz='l';pts=3;sw=23;sh=24;}else if(r2<0.53){sz='m';pts=2;sw=19;sh=20;}
+    const cxPos=RL()+sw+Math.random()*(RW()-sw*2);
+    objs.push({type:'chick',x:cxPos,y:-sh,w:sw,h:sh,speed:spd2*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2});
+  }
   // Tortue marcheuse : tentative toutes les ~12s (frN%720)
   if(frN%720===180&&Math.random()<0.7)spawnWalkingTurtle();
-  scY+=(isMob?(0.019+getLv()*.0045):(0.038+getLv()*.009));
+  scY+=(isMob?(0.0095+getLv()*.00225):(0.019+getLv()*.0045));
   updateMines();updateHomingEnemies();updateWhirlpools();updateNarrowPassages();updateSubmarines();updateNewObstacles();
   if(fireCD>0)fireCD--;
   if(getLv()>=4)doFire(); // auto-fire
@@ -1165,7 +1168,20 @@ function drawNarrow(){
     ctx.setLineDash([]);
   }
 }
-function drawObjs(){for(const o of objs){if(!o)continue;ctx.save();drawO(o);ctx.restore();}}
+function drawObjs(){
+  for(const o of objs){
+    if(!o)continue;
+    try{
+      ctx.save();
+      drawO(o);
+      ctx.restore();
+    }catch(e){
+      // Si un objet fait planter son rendu, on récupère proprement sans geler le jeu
+      try{ctx.restore();}catch(_){}
+      console.warn('drawO error on type:',o&&o.type,e);
+    }
+  }
+}
 function drawO(o){
   // Hit flash effect
   if(o.hitFlash>0){ctx.globalAlpha=0.6+Math.sin(Date.now()*.08)*0.4;o.hitFlash--;}
@@ -1896,6 +1912,7 @@ function updateNewObstacles(){
   // ── TORTUES MARCHEUSES : marche le long de la berge → tourne → marche vers l'eau → saut ──
   for(let i=objs.length-1;i>=0;i--){
     const o=objs[i];if(!o||o.type!=='turtle_walking')continue;
+    try{
     if(o.state==='walking_vertical'){
       // Marche le long de la berge (haut↔bas)
       o.y+=o.vy;
@@ -1950,6 +1967,7 @@ function updateNewObstacles(){
     }
     // Sortie d'écran si trop bas
     if(o.y>H()+50){objs.splice(i,1);continue;}
+    }catch(e){console.warn('turtle_walking update error:',e);if(objs[i])objs.splice(i,1);}
   }
 
   // ── HIPPO phase machine ──
