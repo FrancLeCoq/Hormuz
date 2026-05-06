@@ -159,7 +159,7 @@ let S,boat,objs,bulls,pBulls,exps,parts,savFX,keys,scY,af,tInt,sInt;
 let shk=0,shkD=0,frN=0,mTout,lTout;
 let spinA=0,spinSp=0,spinT=0,spinOn=false;
 let fireOn=false,fireCD=0;
-const FIRE_RATE=96;
+const FIRE_RATE=48;
 let colLock=false,narrowPassages=[];
 let paused=false;
 let nextFrancBonus=100;
@@ -306,7 +306,7 @@ function doFire(){
   const lv=getLv();
   // Lv 4-5: tir auto régulier; Lv 6+: mitraillette
   const isMachineGun=lv>=6;
-  const cooldown=isMachineGun?FIRE_RATE:160;
+  const cooldown=isMachineGun?FIRE_RATE:80;
   const bx=boat.x+boat.w/2,by=boat.y;
   // Cibles élargies : tortue, serpent, mine, crocodile, baril, ennemis, requin, aigle
   const PRIORITY=['homing_enemy','enemy','shark','eagle','croco','snake','mine','barrel','turtle'];
@@ -452,8 +452,18 @@ function spawnO(){
     objs.push({type:'barrel',x:rx(),y:-28,w:24,h:28,speed:spd*.55,bob:Math.random()*Math.PI*2,hp:3,maxHp:3});
   }
   else if(t==='eagle'){
-    const tx=rx();
-    objs.push({type:'eagle',x:tx,y:-30,w:32,h:28,speed:0,diveTimer:60+Math.floor(Math.random()*60),diving:false,vx:0,vy:0,targetX:boat.x+boat.w/2,phase:'circle',circleAngle:Math.random()*Math.PI*2,circleR:60+Math.random()*40});
+    // Vol oblique : entre depuis un bord, traverse en diagonale à petite vitesse
+    const fromLeft=Math.random()<0.5;
+    const startX=fromLeft?RL()-32:RR()+5;
+    const startY=Math.random()*(H()*0.6)-20; // entre en haut ou au milieu
+    const endX=fromLeft?RR()+10:RL()-42;
+    const endY=startY+H()*0.4+Math.random()*H()*0.3; // légèrement oblique vers le bas
+    const dist=Math.hypot(endX-startX,endY-startY)||1;
+    const spd2=1.2+Math.random()*0.6; // petite vitesse
+    objs.push({type:'eagle',x:startX,y:startY,w:54,h:38,speed:spd2,
+      vx:(endX-startX)/dist*spd2, vy:(endY-startY)/dist*spd2,
+      phase:'glide', hp:2, maxHp:2,
+      flipX:fromLeft?-1:1}); // flipX pour orienter l'aigle dans le bon sens
   }
   else if(t==='golden_chick'){
     objs.push({type:'golden_chick',x:rx(),y:-32,w:28,h:30,speed:spd*.7,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,life:300});
@@ -553,7 +563,7 @@ function updateHomingEnemies(){
     // Shoot straight down (along river direction)
     o.shootTimer--;
     if(o.shootTimer<=0){
-      const sp=0.5+Math.random()*0.33;
+      const sp=(0.5+Math.random()*0.33)*1.5;
       const bx=o.x+o.w/2;
       bulls.push({x:bx-6,y:o.y+o.h,vx:0,vy:sp,life:500,r:6});
       bulls.push({x:bx+6,y:o.y+o.h,vx:0,vy:sp,life:500,r:6});
@@ -761,14 +771,31 @@ function update(){
   if(!S||!S.running)return;
   frN++;handleInput();
   if(frN%60===0){updateAmbientSound();}
-  // Poussin régulier : 1 poussin toutes les ~3s (180 frames), espacé uniformément
+  // Poussins : toutes les ~3s, 3 modes aléatoires (haut→bas, bas→haut, berge→eau)
   if(frN%180===90){
     const lv2=getLv(),spd2=(1.3+lv2*0.35)*(0.85+Math.random()*0.3)*0.169;
     const wb2=nWobble(lv2);
     const r2=Math.random();let sz='s',pts=1,sw=16,sh=17;
     if(r2<0.2){sz='l';pts=3;sw=23;sh=24;}else if(r2<0.53){sz='m';pts=2;sw=19;sh=20;}
     const cxPos=RL()+sw+Math.random()*(RW()-sw*2);
-    objs.push({type:'chick',x:cxPos,y:-sh,w:sw,h:sh,speed:spd2*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2});
+    const mode=Math.random();
+    if(mode<0.45){
+      // Mode 1 : haut → bas (classique)
+      objs.push({type:'chick',x:cxPos,y:-sh,w:sw,h:sh,speed:spd2*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2});
+    } else if(mode<0.7){
+      // Mode 2 : bas → haut (remonte le courant)
+      objs.push({type:'chick',x:cxPos,y:H()+sh,w:sw,h:sh,speed:-(spd2*.55),bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2,flipY:true});
+    } else {
+      // Mode 3 : poussin sur la berge (comme les tortues), marche et saute dans l'eau
+      const side=Math.random()<0.5?'left':'right';
+      const startX=side==='left'?(RL()-sw-8-Math.random()*20):(RR()+8+Math.random()*20);
+      const startY=50+Math.random()*(H()-150);
+      const edgeX=side==='left'?(RL()+4):(RR()-sw-4);
+      objs.push({type:'chick_walking',x:startX,y:startY,w:sw,h:sh,
+        vx:side==='left'?0.7:-0.7,targetEdgeX:edgeX,side,
+        state:'walking',walkPhase:Math.random()*Math.PI*2,
+        speed:spd2*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2});
+    }
   }
   // Tortue marcheuse : tentative toutes les ~12s (frN%720)
   if(frN%720===180&&Math.random()<0.7)spawnWalkingTurtle();
@@ -790,6 +817,25 @@ function update(){
       weather.fogCount=(wxMap[lv]==='fog')?(weather.fogCount||0)+1:(weather.fogCount||0);
     }}
   updateUI();
+  // Collision missiles ennemis vs obstacles/animaux — ils les endommagent et CONTINUENT leur chemin
+  const BULL_KILLABLE=['croco','shark','snake','hippo','eagle','rock','trunk','turtle','barrel','mine','homing_enemy'];
+  for(let bi=bulls.length-1;bi>=0;bi--){
+    const b=bulls[bi];if(!b)continue;
+    for(let oi=objs.length-1;oi>=0;oi--){
+      const o=objs[oi];if(!o)continue;
+      if(!BULL_KILLABLE.includes(o.type))continue;
+      if(rO(b.x-b.r,b.y-b.r,b.r*2,b.r*2,o.x,o.y,o.w,o.h)){
+        o.hp=(o.hp||1)-1;
+        spawnB(b.x,b.y,'#ff9900',5);
+        if(o.hp<=0){
+          trigEx(o.x+o.w/2,o.y+o.h/2);
+          objs.splice(oi,1);
+        }
+        // Le missile continue — pas de splice du bullet ici
+        break;
+      }
+    }
+  }
   bulls=bulls.filter(b=>{b.x+=b.vx;b.y+=b.vy;b.life--;return b.life>0&&b.x>RL()-20&&b.x<RR()+20&&b.y>-20&&b.y<H()+20;});
   pBulls=pBulls.filter(b=>{b.x+=b.vx;b.y+=b.vy;b.life--;return b.life>0&&b.x>RL()-20&&b.x<RR()+20&&b.y>-20&&b.y<H()+20;});
   for(let i=objs.length-1;i>=0;i--){
@@ -822,7 +868,15 @@ function update(){
       if(o.phaseTimer<=0){if(o.phase==='submerged'){o.phase='emerging';o.phaseTimer=80;}else if(o.phase==='emerging'){o.phase='surface';o.phaseTimer=100+Math.floor(Math.random()*60);}else if(o.phase==='surface'){o.phase='submerging';o.phaseTimer=60;}else{o.phase='submerged';o.phaseTimer=120+Math.floor(Math.random()*90);}}
     }
     if(o.type==='snake'){o.segs[0].x+=Math.sin(frN*o.wb.wf+o.wb.wp)*o.wb.wx;o.segs[0].x=Math.max(RL()+10,Math.min(RR()-10,o.segs[0].x));o.segs[0].y+=o.speed;for(let s=1;s<o.segs.length;s++){const dx=o.segs[s-1].x-o.segs[s].x,dy=o.segs[s-1].y-o.segs[s].y,d=Math.hypot(dx,dy)||1;o.segs[s].x+=dx/d*(d-10);o.segs[s].y+=dy/d*(d-10);}o.x=o.segs[0].x-4;o.y=o.segs[0].y-4;}
-    if(o.type==='eagle'){if(o.phase==='circle'){o.circleAngle+=0.04;o.x=boat.x+boat.w/2+Math.cos(o.circleAngle)*o.circleR-o.w/2;o.y=Math.max(-10,boat.y-120+Math.sin(o.circleAngle*0.5)*30);o.diveTimer--;if(o.diveTimer<=0){o.phase='dive';const dx=boat.x+boat.w/2-o.x,dy=boat.y-o.y,d=Math.hypot(dx,dy)||1;o.vx=dx/d*12;o.vy=dy/d*12;}}else if(o.phase==='dive'){o.x+=o.vx;o.y+=o.vy;if(o.y>H()+50)o.y=H()+200;}}
+    if(o.type==='eagle'){
+      if(o.phase==='glide'){
+        // Vol rectiligne oblique
+        o.x+=o.vx; o.y+=o.vy;
+        // Légère oscillation verticale pour effet naturel d'ailes
+        o.y+=Math.sin(frN*0.08+o.x)*0.3;
+      }
+      // Sortie d'écran gérée par le filtre global (y > H+50, etc.)
+    }
     if(o.type==='current_zone'){if(boat.sink<=0){const inZone=rO(boat.x,boat.y,boat.w,boat.h,o.x,o.y,o.w,o.h);if(inZone){boat.x+=o.dir*(o.strength*2.5);boat.x=Math.max(RL()+4,Math.min(RR()-boat.w-4,boat.x));}}}
     if(o.type==='mosquito'&&boat.inv<=0){const dx=boat.x+boat.w/2-(o.x+o.w/2),dy=boat.y+boat.h/2-(o.y+o.h/2),d=Math.hypot(dx,dy);if(d<80){o.x+=dx/d*0.8;o.y+=dy/d*0.8;}for(const s of o.swarm)s.a+=s.s;}
     if(o.type==='golden_chick'){o.life--;if(o.life<=0)objs.splice(i,1);}
@@ -1193,7 +1247,7 @@ function drawO(o){
     ctx.globalAlpha=(ctx.globalAlpha||1)*sc;
   }
   switch(o.type){
-    case'chick':dChick(o);break;case'rock':dRock(o);break;case'trunk':dTrunk(o);break;
+    case'chick':dChick(o);break;case'chick_walking':dChickWalking(o);break;case'rock':dRock(o);break;case'trunk':dTrunk(o);break;
     case'croco':dCroco(o);break;case'mine':dMine(o);break;case'enemy':dEnemyBoat(o,false);break;
     case'homing_enemy':dEnemyBoat(o,true);break;case'whirlpool':dWhirl(o);break;
     case'candy':dCandy(o);break;case'shark':dShark(o);break;case'island':dIsland(o);break;
@@ -1213,6 +1267,35 @@ function drawO(o){
     ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=0.6;ctx.strokeRect(bx,by,bw,bh);
   }
 }
+// ── CHICK MARCHEUR sur la berge ──
+function dChickWalking(o){
+  ctx.save();
+  // Petit bondissement
+  const yOff=Math.abs(Math.sin(o.walkPhase))*-3;
+  ctx.translate(o.x+o.w/2,o.y+o.h/2+yOff);
+  // Flip selon direction
+  if(o.vx>0)ctx.scale(-1,1);
+  const sc=o.sz==='l'?1.45:o.sz==='m'?1.2:1.0;
+  ctx.scale(sc,sc);
+  // Corps jaune du poussin
+  ctx.fillStyle='#FFD700';
+  ctx.beginPath();ctx.ellipse(0,2,7,6,0,0,Math.PI*2);ctx.fill();
+  // Tête
+  ctx.beginPath();ctx.arc(0,-5,5,0,Math.PI*2);ctx.fill();
+  // Bec
+  ctx.fillStyle='#FF8C00';
+  ctx.beginPath();ctx.moveTo(4,-5);ctx.lineTo(8,-4);ctx.lineTo(4,-3);ctx.closePath();ctx.fill();
+  // Oeil
+  ctx.fillStyle='#000';ctx.beginPath();ctx.arc(2,-6,1.2,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(2.4,-6.3,0.5,0,Math.PI*2);ctx.fill();
+  // Petites pattes animées
+  const legSwing=Math.sin(o.walkPhase)*3;
+  ctx.strokeStyle='#FF8C00';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(-2,7);ctx.lineTo(-2+legSwing,12);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(2,7);ctx.lineTo(2-legSwing,12);ctx.stroke();
+  ctx.restore();
+}
+
 function dChick(o){
   const bob=Math.sin(Date.now()*.01+o.bob)*3,sos=Math.sin(Date.now()*.025+o.sos),arm=Math.sin(Date.now()*.04+o.sos)*0.7;
   const sc=o.sz==='l'?1.45:o.sz==='m'?1.2:1.0,bc=o.pts===3?'#ff5500':o.pts===2?'#ff9900':'#22cc44';
@@ -1412,7 +1495,20 @@ function dShark(o){
   const wag=Math.sin(Date.now()*.008+o.sway)*0.12;ctx.rotate(wag);
   if(sharkLoaded&&imgShark.naturalWidth>0){
     const dw=o.w*2.2,dh=o.h*2.2;
+    // Clip : on ne montre que 72% du haut → nage partiellement immergé
+    ctx.save();
+    ctx.beginPath();ctx.rect(-dw/2,-dh/2,dw,dh*0.72);ctx.clip();
     ctx.drawImage(imgShark,-dw/2,-dh/2,dw,dh);
+    ctx.restore();
+    // Ligne de flottaison ondulée
+    const waterY=dh*0.72-dh/2;
+    ctx.strokeStyle='rgba(140,200,255,0.45)';ctx.lineWidth=1.5;
+    ctx.beginPath();
+    for(let xx=-dw*0.45;xx<dw*0.45;xx+=4){
+      const wy=waterY+Math.sin(xx*0.2+frN*0.07)*1.3;
+      xx===-dw*0.45?ctx.moveTo(xx,wy):ctx.lineTo(xx,wy);
+    }
+    ctx.stroke();
   } else {
     ctx.fillStyle='#555';ctx.beginPath();ctx.ellipse(0,0,o.w/2,o.h/2,0,0,Math.PI*2);ctx.fill();
   }
@@ -1909,6 +2005,25 @@ function triggerShakeSoft(){shk=4;shkD=8;}
 function updateNewObstacles(){
   if(!S||!S.running)return;
 
+  // ── POUSSINS MARCHEURS sur la berge ──
+  for(let i=objs.length-1;i>=0;i--){
+    const o=objs[i];if(!o||o.type!=='chick_walking')continue;
+    try{
+      o.walkPhase+=0.2;
+      o.x+=o.vx;
+      // Atteint le bord de l'eau → saute et devient un chick normal
+      const reached=o.side==='left'?(o.x>=o.targetEdgeX):(o.x<=o.targetEdgeX);
+      if(reached){
+        // Petit splash et conversion en poussin normal dans l'eau
+        spawnB(o.x+o.w/2,o.y+o.h/2,'#88ccff',6);
+        objs.splice(i,1);
+        objs.push({type:'chick',x:o.x,y:o.y,w:o.w,h:o.h,speed:o.speed,bob:o.bob,sos:o.sos,sz:o.sz,pts:o.pts,wb:o.wb});
+        continue;
+      }
+      if(o.x<-60||o.x>W()+60){objs.splice(i,1);}
+    }catch(e){console.warn('chick_walking error:',e);if(objs[i])objs.splice(i,1);}
+  }
+
   // ── TORTUES MARCHEUSES : marche le long de la berge → tourne → marche vers l'eau → saut ──
   for(let i=objs.length-1;i>=0;i--){
     const o=objs[i];if(!o||o.type!=='turtle_walking')continue;
@@ -2319,17 +2434,19 @@ function dBarrel(o){
 function dEagle(o){
   const t2=Date.now();
   ctx.save();ctx.translate(o.x+o.w/2,o.y+o.h/2);
-  if(o.phase==='dive')ctx.rotate(Math.atan2(o.vy,o.vx)+Math.PI/2);
-  else ctx.rotate(Math.sin(t2*.015)*.1);
+  // Orientation selon direction de vol
+  const flipX=o.flipX||1; // -1 = vole vers la droite, 1 = vers la gauche (PNG natif)
+  ctx.scale(flipX,1);
+  // Légère rotation oblique selon trajectoire
+  const glideAngle=Math.atan2(o.vy||0,Math.abs(o.vx||1))*0.4;
+  ctx.rotate(glideAngle);
   if(eagleLoaded&&imgEagle.naturalWidth>0){
-    // PNG : taille en jeu raisonnable, l'image fait office d'aigle complet
     const drawW=o.w*1.4,drawH=o.h*1.4;
-    // Léger battement d'ailes simulé par scale Y (effet de souffle)
-    const flapScale=1+Math.sin(t2*.012)*0.05;
+    // Battement d'ailes
+    const flapScale=1+Math.sin(t2*.018)*0.06;
     ctx.scale(1,flapScale);
     ctx.drawImage(imgEagle,-drawW/2,-drawH/2,drawW,drawH);
   } else {
-    // Fallback dessin Canvas
     const flap=Math.sin(t2*.12)*0.4;
     ctx.fillStyle='#3a2a10';
     ctx.save();ctx.rotate(-flap);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-o.w*.6,-4);ctx.lineTo(-o.w*.5,6);ctx.closePath();ctx.fill();ctx.restore();
@@ -2339,8 +2456,6 @@ function dEagle(o){
     ctx.fillStyle='#e8a020';ctx.beginPath();ctx.moveTo(-3,-5);ctx.lineTo(3,-5);ctx.lineTo(0,-1);ctx.closePath();ctx.fill();
     ctx.fillStyle='#222';ctx.beginPath();ctx.arc(0,-9,2,0,Math.PI*2);ctx.fill();
   }
-  // Shadow when diving (rouge menaçant)
-  if(o.phase==='dive'){ctx.globalAlpha=0.4;ctx.fillStyle='#ff4400';ctx.beginPath();ctx.ellipse(0,6,5,3,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
   ctx.restore();
 }
 
