@@ -483,8 +483,8 @@ function spawnO(){
   }
   else if(t==='croco'){const sc=0.8+Math.random()*.4;objs.push({type:'croco',x:rx(),y:fromBottom?H()+55*sc:-55*sc,w:19*sc,h:49*sc,speed:fromBottom?-randSpd():randSpd(),dir:Math.random()<.5?-1:1,sway:Math.random()*Math.PI*2,sc,tail:Math.random()*Math.PI*2,wb,hp:getHP('croco',lv),maxHp:getHP('croco',lv)});}
   else if(t==='mine'){const vx=(Math.random()-.5)*2.2;objs.push({type:'mine',x:rx(),y:fromBottom?H()+17:-17,w:17,h:17,speed:randSpd()*.5,bob:Math.random()*Math.PI*2,vx,zig:0,zigP:45+Math.random()*60,dead:false,fromBottom,hp:getHP('mine',lv),maxHp:getHP('mine',lv),wb});}
-  else if(t==='enemy')objs.push({type:'enemy',x:rx(),y:-72,w:60,h:66,speed:randSpd()*.75,wb,hp:getHP('enemy',lv),maxHp:getHP('enemy',lv)});
-  else if(t==='homing_enemy'){const smart=lv>=10;objs.push({type:'homing_enemy',x:rx(),y:-72,w:60,h:66,speed:randSpd()*.6,smart,shootTimer:40+Math.floor(Math.random()*40),vx:0,vy:randSpd()*.6,hp:getHP('homing_enemy',lv),maxHp:getHP('homing_enemy',lv),wb:smart?null:wb});}
+  else if(t==='enemy')objs.push({type:'enemy',x:rx(),y:-72,w:60,h:66,speed:randSpd()*.55,wb,hp:getHP('enemy',lv),maxHp:getHP('enemy',lv)});
+  else if(t==='homing_enemy'){const smart=lv>=10;const _hs=randSpd()*.5;objs.push({type:'homing_enemy',x:rx(),y:-72,w:60,h:66,speed:_hs,smart,shootTimer:40+Math.floor(Math.random()*40),vx:0,vy:_hs,hp:getHP('homing_enemy',lv),maxHp:getHP('homing_enemy',lv),wb:smart?null:wb});}
   else if(t==='whirlpool')objs.push({type:'whirlpool',x:rx(),y:-48,w:48,h:48,speed:randSpd()*.28,rot:0,wb});
   else if(t==='candy')objs.push({type:'candy',x:rx(),y:-17,w:17,h:17,speed:randSpd()*.55,bob:Math.random()*Math.PI*2});
   else if(t==='shark'){const side=Math.random()<0.5,sx=side?ri+mg:ri+rw-mg-40;objs.push({type:'shark',x:sx,y:-36,w:24,h:36,speed:randSpd()*.8,dir:side?1:-1,sway:Math.random()*Math.PI*2,wb,hp:getHP('shark',lv),maxHp:getHP('shark',lv)});}
@@ -867,9 +867,16 @@ function update(){
       const side=Math.random()<0.5?'left':'right';
       const vertDir=Math.random()<0.5?1:-1; // descend ou monte
       const startY=vertDir>0?(-sh-10):(H()+10);
-      const startX=side==='left'?(RL()-sw-8-Math.random()*25):(RR()+8+Math.random()*25);
+      // Largeur de berge disponible (RL() côté gauche, W()-RR() côté droit)
+      const bankW=side==='left'?RL():(W()-RR());
+      // Placer le poussin au milieu de la berge, jamais trop proche du bord
+      const margin=Math.max(4,bankW*0.2); // 20% de marge minimum
+      const startX=side==='left'
+        ? margin+Math.random()*(bankW-sw-margin*2)  // bien dans la berge gauche
+        : RR()+margin+Math.random()*(bankW-sw-margin*2); // bien dans la berge droite
       const turnY=60+Math.random()*(H()-180); // point où il tourne vers l'eau
-      const edgeX=side==='left'?(RL()+4):(RR()-sw-4);
+      // S'arrêter exactement au bord de la rivière (pas dedans)
+      const edgeX=side==='left'?(RL()-sw):(RR());
       objs.push({type:'chick_walking',x:startX,y:startY,w:sw,h:sh,
         vx:0, vy:vertDir*0.6, targetEdgeX:edgeX, side,
         state:'vertical', vertDir, turnY,
@@ -2135,8 +2142,10 @@ function updateNewObstacles(){
         }
         if(o.y>H()+60||o.y<-60){objs.splice(i,1);continue;}
       } else if(o.state==='horizontal'){
-        // Marche horizontalement vers l'eau
+        // Marche horizontalement vers l'eau — ne dépasse jamais dans la rivière
         o.x+=o.vx;
+        if(o.side==='left')o.x=Math.min(o.x,RL()-o.w);
+        else o.x=Math.max(o.x,RR());
         const reached=o.side==='left'?(o.x>=o.targetEdgeX):(o.x<=o.targetEdgeX);
         if(reached){
           // Plongeon : devient un chick normal dans l'eau
