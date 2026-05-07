@@ -510,7 +510,7 @@ function spawnO(){
   }
   else if(t==='snake'){
     const sx=rx();
-    const snakeX=rx();objs.push({type:'snake',baseX:snakeX,amplitude:RW()*.35,x:sx,y:fromBottom?H()+20:-20,w:8,h:8,speed:fromBottom?-randSpd()*.6:randSpd()*.6,angle:Math.PI/2,segs:Array.from({length:14},(_,i)=>({x:sx,y:fromBottom?H()+20+i*10:-20-i*10})),hp:getHP('snake',lv),maxHp:getHP('snake',lv),hitR:18,wb:{wx:2.8+Math.random()*1.4,wf:0.022+Math.random()*.01,wp:Math.random()*Math.PI*2}});
+    const snakeX=rx();objs.push({type:'snake',baseX:snakeX,amplitude:RW()*.35,x:sx,y:fromBottom?H()+20:-20,w:8,h:8,speed:fromBottom?-randSpd()*.6:randSpd()*.6,angle:Math.PI/2,segs:Array.from({length:14},(_,i)=>({x:sx,y:fromBottom?H()+20+i*10:-20-i*10})),hp:getHP('snake',lv),maxHp:getHP('snake',lv),hitR:18,wb:{wx:1.4+Math.random()*0.7,wf:0.022+Math.random()*.01,wp:Math.random()*Math.PI*2}});
   }
   else if(t==='barrel'){
     objs.push({type:'barrel',x:rx(),y:fromBottom?H()+28:-28,w:24,h:28,speed:fromBottom?-randSpd()*.55:randSpd()*.55,bob:Math.random()*Math.PI*2,hp:getHP('barrel',lv),maxHp:getHP('barrel',lv)});
@@ -622,12 +622,14 @@ function updateHomingEnemies(){
       const cur=Math.hypot(o.vx,o.vy);if(cur>sp){o.vx=o.vx/cur*sp;o.vy=o.vy/cur*sp;}
       o.x+=o.vx;o.y+=o.vy;o.x=Math.max(RL()+4,Math.min(RR()-o.w-4,o.x));
     } else {
-      o.y+=o.vy*.5;if(o.wb)o.x+=Math.sin(frN*o.wb.wf+o.wb.wp)*o.wb.wx;
+      o.y+=o.vy*.5;if(o.wb)o.x+=Math.sin(frN*o.wb.wf+o.wb.wp)*o.wb.wx*0.25;
     }
-    // Shoot straight down — missile toujours 0.1 plus rapide que le bateau
+    // Shoot straight down — missile 0.1 plus rapide que la vitesse RÉELLE du bateau
     o.shootTimer--;
     if(o.shootTimer<=0){
-      const sp=Math.abs(o.speed)+0.1;
+      // Vitesse réelle : homing non-smart bouge à vy*0.5, homing smart à o.speed, enemy à o.speed
+      const realSpeed=o.type==='homing_enemy'&&!o.smart?Math.abs(o.vy)*0.5:Math.abs(o.speed);
+      const sp=realSpeed+0.1;
       const bx=o.x+o.w/2;
       bulls.push({x:bx-6,y:o.y+o.h,vx:0,vy:sp,life:500,r:6});
       bulls.push({x:bx+6,y:o.y+o.h,vx:0,vy:sp,life:500,r:6});
@@ -928,7 +930,18 @@ function update(){
   for(let i=objs.length-1;i>=0;i--){
     if(!objs[i])continue;const o=objs[i];
     if(o.type!=='homing_enemy'||!o.smart) o.y+=o.speed;
-    if(o.wb&&o.type!=='croco'&&o.type!=='shark'){o.x+=Math.sin(frN*o.wb.wf+o.wb.wp)*o.wb.wx;o.x=Math.max(RL()+4,Math.min(RR()-o.w-4,o.x));}
+    // Courant : dévier les obstacles/animaux qui traversent une current_zone
+    if(o.type!=='current_zone'&&o.type!=='chick'&&o.type!=='golden_chick'&&o.type!=='chick_walking'&&o.type!=='candy'){
+      for(const cz of objs){
+        if(!cz||cz.type!=='current_zone')continue;
+        if(rO(o.x,o.y,o.w,o.h,cz.x,cz.y,cz.w,cz.h)){
+          o.x+=cz.dir*cz.strength*0.6; // déviation latérale (moins forte que pour le bateau)
+          o.x=Math.max(RL()+4,Math.min(RR()-o.w-4,o.x));
+          break;
+        }
+      }
+    }
+    if(o.wb&&o.type!=='croco'&&o.type!=='shark'){const wbMult=o.type==='enemy'?0.25:1;o.x+=Math.sin(frN*o.wb.wf+o.wb.wp)*o.wb.wx*wbMult;o.x=Math.max(RL()+4,Math.min(RR()-o.w-4,o.x));}
     if(o.type==='croco'){o.sway+=.04;o.x+=Math.sin(o.sway)*o.dir*.8;o.x=Math.max(RL()+4,Math.min(RR()-o.w-4,o.x));o.tail+=.09;}
     if(o.type==='shark'){o.sway+=.035;o.x+=Math.sin(o.sway)*o.dir*.9;o.x=Math.max(RL()+4,Math.min(RR()-o.w-4,o.x));}
     if(o.type==='whirlpool')o.rot+=.07;
@@ -1146,7 +1159,15 @@ function updateSubmarines(){
       let destroyed=false;
       for(let oi=objs.length-1;oi>=0;oi--){
         const o=objs[oi];if(!o)continue;
-        if(Math.hypot(m.x-(o.x+o.w/2),m.y-(o.y+o.h/2))<m.r+Math.max(o.w,o.h)/2){
+        // Serpent : vérifier chaque segment
+        let hit=false;
+        if(o.type==='snake'&&o.segs){
+          const hr=(o.hitR||18)+m.r;
+          for(const seg of o.segs){if(Math.hypot(m.x-seg.x,m.y-seg.y)<hr){hit=true;break;}}
+        } else {
+          hit=Math.hypot(m.x-(o.x+o.w/2),m.y-(o.y+o.h/2))<m.r+Math.max(o.w,o.h)/2;
+        }
+        if(hit){
           trigEx(o.x+o.w/2,o.y+o.h/2);
           objs.splice(oi,1);
           sub.missiles.splice(mi,1);
