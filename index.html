@@ -875,8 +875,8 @@ function update(){
         ? margin+Math.random()*(bankW-sw-margin*2)  // bien dans la berge gauche
         : RR()+margin+Math.random()*(bankW-sw-margin*2); // bien dans la berge droite
       const turnY=60+Math.random()*(H()-180); // point où il tourne vers l'eau
-      // S'arrêter exactement au bord de la rivière (pas dedans)
-      const edgeX=side==='left'?(RL()-sw):(RR());
+      // S'arrêter suffisamment dans la rivière pour que le poussin soit atteignable
+      const edgeX=side==='left'?(RL()+RW()*0.15):(RR()-sw-RW()*0.15);
       objs.push({type:'chick_walking',x:startX,y:startY,w:sw,h:sh,
         vx:0, vy:vertDir*0.6, targetEdgeX:edgeX, side,
         state:'vertical', vertDir, turnY,
@@ -2142,10 +2142,8 @@ function updateNewObstacles(){
         }
         if(o.y>H()+60||o.y<-60){objs.splice(i,1);continue;}
       } else if(o.state==='horizontal'){
-        // Marche horizontalement vers l'eau — ne dépasse jamais dans la rivière
+        // Marche horizontalement vers la rivière
         o.x+=o.vx;
-        if(o.side==='left')o.x=Math.min(o.x,RL()-o.w);
-        else o.x=Math.max(o.x,RR());
         const reached=o.side==='left'?(o.x>=o.targetEdgeX):(o.x<=o.targetEdgeX);
         if(reached){
           // Plongeon : devient un chick normal dans l'eau
