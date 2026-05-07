@@ -425,7 +425,7 @@ function spawnO(){
   const rx=()=>ri+mg+Math.random()*(rw-mg*2);
   // Vitesse de base par niveau (min et max), chaque objet tire sa propre vitesse
   const spdMin=(1.3+lv*0.35)*0.338*0.5;  // vitesse plancher (lente)
-  const spdMax=(1.3+lv*0.35)*0.338*1.8;  // vitesse plafond (rapide)
+  const spdMax=Math.max(spdMin+0.1,(1.3+lv*0.35)*0.338*1.8-0.3);  // vitesse plafond (rapide, -0.3)
   // Chaque objet obtient sa propre vitesse aléatoire dans la fourchette
   const randSpd=()=>spdMin+Math.random()*(spdMax-spdMin);
   const spd=randSpd(); // vitesse pour l'objet tiré ce cycle
@@ -624,10 +624,10 @@ function updateHomingEnemies(){
     } else {
       o.y+=o.vy*.5;if(o.wb)o.x+=Math.sin(frN*o.wb.wf+o.wb.wp)*o.wb.wx;
     }
-    // Shoot straight down (along river direction)
+    // Shoot straight down — missile toujours 0.1 plus rapide que le bateau
     o.shootTimer--;
     if(o.shootTimer<=0){
-      const sp=(0.5+Math.random()*0.33)*1.5;
+      const sp=Math.abs(o.speed)+0.1;
       const bx=o.x+o.w/2;
       bulls.push({x:bx-6,y:o.y+o.h,vx:0,vy:sp,life:500,r:6});
       bulls.push({x:bx+6,y:o.y+o.h,vx:0,vy:sp,life:500,r:6});
