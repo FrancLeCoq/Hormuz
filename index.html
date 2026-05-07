@@ -2099,18 +2099,18 @@ function splitObject(o,idx){
   const spd2=o.speed*(1.1+Math.random()*.3);
   if(o.type==='rock'){
     const hw=Math.max(8,o.w/2),hh=Math.max(8,o.h/2);
-    objs.push({type:'rock',x:o.x,y:o.y,w:hw,h:hh,speed:spd2,wb:{wx:-(1+Math.random()*1.5),wf:0.04,wp:0},hp:1,maxHp:1,isFragment:true});
-    objs.push({type:'rock',x:o.x+o.w/2,y:o.y,w:hw,h:hh,speed:spd2*(0.9+Math.random()*.2),wb:{wx:(1+Math.random()*1.5),wf:0.04,wp:1},hp:1,maxHp:1,isFragment:true});
+    objs.push({type:'rock',x:o.x,y:o.y,w:hw,h:hh,speed:spd2,wb:{wx:-(0.25+Math.random()*0.2),wf:0.04,wp:0},hp:1,maxHp:1,isFragment:true});
+    objs.push({type:'rock',x:o.x+o.w/2,y:o.y,w:hw,h:hh,speed:spd2*(0.9+Math.random()*.2),wb:{wx:(0.25+Math.random()*0.2),wf:0.04,wp:1},hp:1,maxHp:1,isFragment:true});
   } else {
     // trunk — split horizontally/vertically
     const hlen=Math.max(10,o.vertical?o.h/2:o.w/2);
     const thick=o.vertical?o.w:o.h;
     if(o.vertical){
-      objs.push({type:'trunk',x:o.x,y:o.y,w:thick,h:hlen,speed:spd2,ang:0,vertical:true,mossPts:[],branches:[],wb:{wx:-(0.8+Math.random()),wf:0.035,wp:0},hp:1,maxHp:1,isFragment:true});
-      objs.push({type:'trunk',x:o.x,y:o.y+hlen,w:thick,h:hlen,speed:spd2*(0.85+Math.random()*.3),ang:0,vertical:true,mossPts:[],branches:[],wb:{wx:(0.8+Math.random()),wf:0.035,wp:2},hp:1,maxHp:1,isFragment:true});
+      objs.push({type:'trunk',x:o.x,y:o.y,w:thick,h:hlen,speed:spd2,ang:0,vertical:true,mossPts:[],branches:[],wb:{wx:-(0.2+Math.random()*0.15),wf:0.035,wp:0},hp:1,maxHp:1,isFragment:true});
+      objs.push({type:'trunk',x:o.x,y:o.y+hlen,w:thick,h:hlen,speed:spd2*(0.85+Math.random()*.3),ang:0,vertical:true,mossPts:[],branches:[],wb:{wx:(0.2+Math.random()*0.15),wf:0.035,wp:2},hp:1,maxHp:1,isFragment:true});
     } else {
-      objs.push({type:'trunk',x:o.x,y:o.y,w:hlen,h:thick,speed:spd2,ang:o.ang||0,vertical:false,mossPts:[],branches:[],wb:{wx:-(0.8+Math.random()),wf:0.035,wp:0},hp:1,maxHp:1,isFragment:true});
-      objs.push({type:'trunk',x:o.x+hlen,y:o.y,w:hlen,h:thick,speed:spd2*(0.85+Math.random()*.3),ang:o.ang||0,vertical:false,mossPts:[],branches:[],wb:{wx:(0.8+Math.random()),wf:0.035,wp:2},hp:1,maxHp:1,isFragment:true});
+      objs.push({type:'trunk',x:o.x,y:o.y,w:hlen,h:thick,speed:spd2,ang:o.ang||0,vertical:false,mossPts:[],branches:[],wb:{wx:-(0.2+Math.random()*0.15),wf:0.035,wp:0},hp:1,maxHp:1,isFragment:true});
+      objs.push({type:'trunk',x:o.x+hlen,y:o.y,w:hlen,h:thick,speed:spd2*(0.85+Math.random()*.3),ang:o.ang||0,vertical:false,mossPts:[],branches:[],wb:{wx:(0.2+Math.random()*0.15),wf:0.035,wp:2},hp:1,maxHp:1,isFragment:true});
     }
   }
 }
