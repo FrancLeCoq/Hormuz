@@ -260,7 +260,7 @@ function loseL(){
   if(S.lives<=0){gameOver();return;}
   boat.sink=70;
   spinOn=true;spinA=0;spinSp=0.38;spinT=55;
-  shk=10;shkD=22;bulls=[];pBulls=[];
+  shk=4;shkD=10;bulls=[];pBulls=[];
   setTimeout(()=>{
     if(!S||!S.running)return;
     boat=iB();
@@ -396,22 +396,22 @@ let _lastSpawnTs=0;
 // HP progressifs par niveau
 function getHP(type,lv){
   const t={
-    rock:     [2,2,2,3,3,6,8],
-    trunk:    [2,2,2,3,3,6,8],
-    mine:     [2,2,3,3,4,8,10],
-    turtle:   [2,2,3,3,4,8,10],
-    barrel:   [2,2,3,3,4,8,10],
-    snake:    [3,3,3,4,5,10,14],
-    croco:    [3,3,3,4,6,12,16],
-    enemy:    [3,3,3,4,5,10,14],
-    homing_enemy:[3,3,3,4,5,10,14],
-    eagle:    [2,2,2,3,4,8,10],
-    shark:    [5,5,5,5,5,10,14],
-    hippo:    [8,8,8,10,12,22,28],
+    rock:     [3,3,3,4,4,7,9],
+    trunk:    [3,3,3,4,4,7,9],
+    mine:     [3,3,4,4,5,9,11],
+    turtle:   [3,3,4,4,5,9,11],
+    barrel:   [3,3,4,4,5,9,11],
+    snake:    [4,4,4,5,6,11,15],
+    croco:    [4,4,4,5,7,13,17],
+    enemy:    [4,4,4,5,6,11,15],
+    homing_enemy:[4,4,4,5,6,12,16],
+    eagle:    [3,3,3,4,5,9,11],
+    shark:    [6,6,6,6,6,11,15],
+    hippo:    [9,9,9,11,13,23,29],
   };
   // Index : lv1-2=0, lv3-4=1, lv5=2, lv6=3, lv7-8=4, lv9-10=5, lv11=6
   const idx=lv>=11?6:lv>=9?5:lv>=7?4:lv>=6?3:lv>=5?2:lv>=3?1:0;
-  return (t[type]&&t[type][idx])||2;
+  return (t[type]&&t[type][idx])||3;
 }
 function spawnO(){
   if(!S||!S.running)return;
@@ -465,7 +465,8 @@ function spawnO(){
   if(t==='chick'){
     // 1 poussin par vague (÷2), positionné aléatoirement dans la rivière
     const r2=Math.random();let sz='s',pts=1,sw=16,sh=17;
-    if(r2<0.1){sz='xl';pts=4;sw=29;sh=30;}else if(r2<0.3){sz='l';pts=3;sw=23;sh=24;}else if(r2<0.63){sz='m';pts=2;sw=19;sh=20;}
+    const canXL=getLv()>=5;
+    if(canXL&&r2<0.1){sz='xl';pts=4;sw=29;sh=30;}else if(r2<(canXL?0.3:0.2)){sz='l';pts=3;sw=23;sh=24;}else if(r2<(canXL?0.63:0.53)){sz='m';pts=2;sw=19;sh=20;}
     const cxPos=RL()+sw+Math.random()*(RW()-sw*2);
     objs.push({type:'chick',x:cxPos,y:-sh,w:sw,h:sh,speed:spd*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb});
   }
@@ -659,7 +660,7 @@ function trigEx(cx,cy){
     for(let i=0;i<16;i++){const a=Math.random()*Math.PI*2,s=2+Math.random()*6;parts.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:22+Math.random()*20,maxLife:42,color:['#ff4400','#ff9900','#ffdd00','#ff6600'][Math.floor(Math.random()*4)],r:2+Math.random()*4,type:'fire'});}
     for(let i=0;i<6;i++){const a=Math.random()*Math.PI*2,s=.8+Math.random()*2;parts.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-.5,life:30+Math.random()*18,maxLife:48,color:'#888',r:4+Math.random()*5,type:'smoke'});}
   }
-  shk=8;shkD=16;
+  shk=3;shkD=8;
 }
 function spawnMsg(txt,dur){
   clearTimeout(mTout);const el=document.getElementById('msg');el.textContent=txt;el.className='show';
@@ -845,7 +846,8 @@ function update(){
     const spd2=(1.3+lv2*0.35)*(0.85+Math.random()*0.3)*0.338;
     const wb2=nWobble(lv2);
     const r2=Math.random();let sz='s',pts=1,sw=16,sh=17;
-    if(r2<0.1){sz='xl';pts=4;sw=29;sh=30;}else if(r2<0.3){sz='l';pts=3;sw=23;sh=24;}else if(r2<0.63){sz='m';pts=2;sw=19;sh=20;}
+    const canXL=getLv()>=5;
+    if(canXL&&r2<0.1){sz='xl';pts=4;sw=29;sh=30;}else if(r2<(canXL?0.3:0.2)){sz='l';pts=3;sw=23;sh=24;}else if(r2<(canXL?0.63:0.53)){sz='m';pts=2;sw=19;sh=20;}
     const cxPos=RL()+sw+Math.random()*(RW()-sw*2);
     const mode=Math.random();
     if(mode<0.45){
@@ -891,7 +893,7 @@ function update(){
     }}
   updateUI();
   // Collision missiles ennemis vs obstacles/animaux — ils les endommagent et CONTINUENT leur chemin
-  const BULL_KILLABLE=['croco','shark','snake','hippo','eagle','rock','trunk','turtle','barrel','mine','homing_enemy'];
+  const BULL_KILLABLE=['croco','shark','snake','hippo','eagle','rock','trunk','turtle','barrel','mine'];
   for(let bi=bulls.length-1;bi>=0;bi--){
     const b=bulls[bi];if(!b)continue;
     for(let oi=objs.length-1;oi>=0;oi--){
@@ -2107,7 +2109,7 @@ function splitObject(o,idx){
     }
   }
 }
-function triggerShakeSoft(){shk=4;shkD=8;}
+function triggerShakeSoft(){shk=1;shkD=3;}
 
 function updateNewObstacles(){
   if(!S||!S.running)return;
@@ -2337,7 +2339,6 @@ function updateNewObstacles(){
       } else {
         // Tiny spark puff — just 4 particles, no explosion ring
         if(parts.length<280)for(let p=0;p<4;p++){const a2=Math.random()*Math.PI*2,s=0.8+Math.random()*1.5;parts.push({x:cx,y:cy,vx:Math.cos(a2)*s,vy:Math.sin(a2)*s,life:12+Math.random()*8,maxLife:20,color:['#ffaa00','#ffdd88'][p%2],r:2+Math.random()*2,type:'pop'});}
-        shk=2;shkD=4;
       }
 
       // Damage — rock/trunk always split on first collision
