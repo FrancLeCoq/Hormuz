@@ -482,7 +482,7 @@ function spawnO(){
     else objs.push({type:'trunk',x:RL()+10+Math.random()*(RW()-len-20),y:fromBottom?H()+thick:-thick,w:len,h:thick,speed:fromBottom?-randSpd():randSpd(),ang:(Math.random()-.5)*.3,vertical:false,mossPts:gMoss(),branches:gBr(len),wb,hp:2,maxHp:2});
   }
   else if(t==='croco'){const sc=0.8+Math.random()*.4;objs.push({type:'croco',x:rx(),y:fromBottom?H()+55*sc:-55*sc,w:19*sc,h:49*sc,speed:fromBottom?-randSpd():randSpd(),dir:Math.random()<.5?-1:1,sway:Math.random()*Math.PI*2,sc,tail:Math.random()*Math.PI*2,wb,hp:getHP('croco',lv),maxHp:getHP('croco',lv)});}
-  else if(t==='mine'){const vx=(Math.random()-.5)*2.2;objs.push({type:'mine',x:rx(),y:fromBottom?H()+17:-17,w:17,h:17,speed:randSpd()*.5,bob:Math.random()*Math.PI*2,vx,zig:0,zigP:45+Math.random()*60,dead:false,fromBottom,hp:getHP('mine',lv),maxHp:getHP('mine',lv),wb});}
+  else if(t==='mine'){const regularOsc=lv<=5;const vx=regularOsc?0:(Math.random()-.5)*2.2;objs.push({type:'mine',x:rx(),y:fromBottom?H()+17:-17,w:17,h:17,speed:randSpd()*.5,bob:Math.random()*Math.PI*2,vx,zig:0,zigP:45+Math.random()*60,dead:false,fromBottom,regularOsc,oscPhase:Math.random()*Math.PI*2,hp:getHP('mine',lv),maxHp:getHP('mine',lv),wb});}
   else if(t==='enemy')objs.push({type:'enemy',x:rx(),y:-72,w:60,h:66,speed:randSpd()*.55,wb,hp:getHP('enemy',lv),maxHp:getHP('enemy',lv)});
   else if(t==='homing_enemy'){const smart=lv>=10;const _hs=randSpd()*.5;objs.push({type:'homing_enemy',x:rx(),y:-72,w:60,h:66,speed:_hs,smart,shootTimer:40+Math.floor(Math.random()*40),vx:0,vy:_hs,hp:getHP('homing_enemy',lv),maxHp:getHP('homing_enemy',lv),wb:smart?null:wb});}
   else if(t==='whirlpool')objs.push({type:'whirlpool',x:rx(),y:-48,w:48,h:48,speed:randSpd()*.28,rot:0,wb});
@@ -555,7 +555,12 @@ function spawnWalkingTurtle(){
   // Position Y de spawn : selon direction, démarre en haut ou en bas hors écran
   const startY=verticalDir>0?(-th-10):(H()+10);
   // Position X : sur la berge, un peu plus loin du bord extérieur
-  const startX=side==='left'?(RL()-tw-15-Math.random()*40):(RR()+15+Math.random()*40);
+  // Centrer dans la berge visible : entre le bord écran et RL/RR
+  const bankW=side==='left'?RL():W()-RR();
+  const margin=Math.max(2,bankW*0.1);
+  const startX=side==='left'
+    ? Math.max(margin, RL()-tw-margin-Math.random()*(bankW-tw-margin*2))
+    : Math.min(W()-tw-margin, RR()+margin+Math.random()*(bankW-tw-margin*2));
   // Position Y où la tortue va tourner pour aller vers l'eau (point d'inflexion)
   const turnY=80+Math.random()*(H()-200);
   // Cible : juste au-delà du bord de la rivière
@@ -629,7 +634,7 @@ function updateHomingEnemies(){
     if(o.shootTimer<=0){
       // Vitesse réelle : homing non-smart bouge à vy*0.5, homing smart à o.speed, enemy à o.speed
       const realSpeed=o.type==='homing_enemy'&&!o.smart?Math.abs(o.vy)*0.5:Math.abs(o.speed);
-      const sp=realSpeed+0.1;
+      const sp=realSpeed+0.4; // missile nettement plus rapide que le bateau
       const bx=o.x+o.w/2;
       bulls.push({x:bx-6,y:o.y+o.h,vx:0,vy:sp,life:500,r:6});
       bulls.push({x:bx+6,y:o.y+o.h,vx:0,vy:sp,life:500,r:6});
@@ -643,7 +648,13 @@ function updateMines(){
   if(!S||!S.running)return;
   for(let i=objs.length-1;i>=0;i--){
     if(!objs[i])continue;const o=objs[i];if(o.type!=='mine'||o.dead)continue;
-    o.zig++;if(o.zig>=o.zigP){o.vx=(Math.random()-.5)*3;o.zigP=30+Math.random()*70;o.zig=0;}
+    if(o.regularOsc){
+      // Oscillation régulière sinusoïdale (niv 1-5)
+      o.oscPhase=(o.oscPhase||0)+0.04;
+      o.vx=Math.sin(o.oscPhase)*1.2;
+    } else {
+      o.zig++;if(o.zig>=o.zigP){o.vx=(Math.random()-.5)*3;o.zigP=30+Math.random()*70;o.zig=0;}
+    }
     o.x+=o.vx;
     const ri=RL(),rr2=RR();
     if(o.x<=ri+2){o.x=ri+2;if(Math.random()<.5)o.vx=Math.abs(o.vx);else{if(!o.dead){o.dead=true;trigEx(o.x+o.w/2,o.y+o.h/2);objs.splice(i,1);}}continue;}
@@ -1391,7 +1402,7 @@ function drawO(o){
   }
   ctx.globalAlpha=1;
   // HP bar only from level 4, and only after first hit (hp < maxHp)
-  if(o.hp!==undefined&&o.maxHp&&o.hp<o.maxHp&&o.type!=='homing_enemy'&&getLv()>=4){
+  if(o.hp!==undefined&&o.maxHp&&o.hp<o.maxHp&&getLv()>=4){
     const bw=o.w+8,bh=4,bx=o.x-4,by=o.y-8;
     ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(bx,by,bw,bh);
     const pct=o.hp/o.maxHp;
