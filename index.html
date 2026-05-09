@@ -610,7 +610,7 @@ function updateWhirlpools(){
     }
     if(boat.inv<=0&&boat.sink<=0){
       const bdx=(boat.x+boat.w/2)-cx,bdy=(boat.y+boat.h/2)-cy,bd=Math.hypot(bdx,bdy);
-      if(bd<r+10&&bd>1){boat.x-=bdx/bd*1.5;boat.y-=bdy/bd*1.5;if(bd<22)loseL();}
+      if(bd<r+10&&bd>1){boat.x-=bdx/bd*1.5;boat.y-=bdy/bd*1.5;if(bd<22&&frN%30===0)loseL();}
     }
   }
 }
@@ -638,8 +638,8 @@ function updateHomingEnemies(){
       // Missile = vitesse réelle mesurée + marge fixe de 0.8 (toujours devant)
       const sp=realMoveSpeed+0.8;
       const bx=o.x+o.w/2;
-      bulls.push({x:bx-6,y:o.y+o.h,vx:0,vy:sp,life:500,r:6});
-      bulls.push({x:bx+6,y:o.y+o.h,vx:0,vy:sp,life:500,r:6});
+      bulls.push({x:bx-6,y:o.y+o.h,vx:0,vy:sp,life:200,r:6});
+      bulls.push({x:bx+6,y:o.y+o.h,vx:0,vy:sp,life:200,r:6});
       o.shootTimer=50+Math.floor(Math.random()*40);
       spawnB(bx,o.y+o.h*.9,'#ff8800',3);
     }
@@ -829,6 +829,10 @@ function checkCols(){
           if(o.hp===undefined)o.hp=1;
           o.hp--;
           if(o.hp<=0){
+            // +1 point bonus pour chaque élimination par tir
+            S.score+=1;
+            savFX.push({x:o.x+o.w/2,y:o.y-10,life:45,maxLife:45,text:'+1pt',color:'#00ff88',size:16});
+            updateUI();
             if(o.type==='mine'){
               if(!o.dead){o.dead=true;trigEx(o.x+o.w/2,o.y+o.h/2);objs.splice(j,1);}
             } else if(o.type==='rock'||o.type==='trunk'){
@@ -881,24 +885,17 @@ function update(){
       // Mode 2 : bas → haut (remonte le courant)
       objs.push({type:'chick',x:cxPos,y:H()+sh,w:sw,h:sh,speed:-(spd2*.55),bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2,flipY:true});
     } else {
-      // Mode 3 : poussin sur la berge, comme les tortues
-      // Spawn en haut ou en bas hors écran, marche verticalement sur la berge, puis plonge
+      // Mode 3 : poussin sur la berge — spawn directement au bord, marche horizontalement
       const side=Math.random()<0.5?'left':'right';
-      const vertDir=Math.random()<0.5?1:-1; // descend ou monte
-      const startY=vertDir>0?(-sh-10):(H()+10);
-      // Largeur de berge disponible (RL() côté gauche, W()-RR() côté droit)
+      const startY=sh+Math.random()*(H()-sh*3);
       const bankW=side==='left'?RL():(W()-RR());
-      // Placer le poussin au milieu de la berge, jamais trop proche du bord
-      const margin=Math.max(4,bankW*0.2); // 20% de marge minimum
       const startX=side==='left'
-        ? margin+Math.random()*(bankW-sw-margin*2)  // bien dans la berge gauche
-        : RR()+margin+Math.random()*(bankW-sw-margin*2); // bien dans la berge droite
-      const turnY=60+Math.random()*(H()-180); // point où il tourne vers l'eau
-      // edgeX = bord de la rivière, côté intérieur de la berge
+        ? Math.max(2, Math.random()*(bankW-sw-4))  // bien dans la berge gauche, jamais dans l'eau
+        : RR()+4+Math.random()*(bankW-sw-4);        // bien dans la berge droite
       const edgeX=side==='left'?RL():RR();
       objs.push({type:'chick_walking',x:startX,y:startY,w:sw,h:sh,
-        vx:0, vy:vertDir*0.6, targetEdgeX:edgeX, side,
-        state:'vertical', vertDir, turnY,
+        vx:side==='left'?0.7:-0.7, vy:0, targetEdgeX:edgeX, side,
+        state:'horizontal',
         walkPhase:Math.random()*Math.PI*2,
         speed:spd2*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2});
     }
