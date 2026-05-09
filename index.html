@@ -163,26 +163,19 @@ let paused=false;
 let nextFrancBonus=100;
 
 // ── PRELOAD IMAGES ──
-const imgBoat=new Image(),imgCroco=new Image(),imgShark=new Image(),imgIsland=new Image(),imgSub=new Image(),imgTrunk=new Image(),imgTurtle=new Image(),imgHippo=new Image(),imgEagle=new Image();
-let boatLoaded=false,crocoLoaded=false,sharkLoaded=false,islandLoaded=false,subLoaded=false,trunkLoaded=false,turtleLoaded=false,hippoLoaded=false,eagleLoaded=false;
-imgBoat.onload=()=>boatLoaded=true;
-imgCroco.onload=()=>crocoLoaded=true;
-imgShark.onload=()=>sharkLoaded=true;
-imgIsland.onload=()=>islandLoaded=true;
-imgSub.onload=()=>subLoaded=true;
-imgTrunk.onload=()=>trunkLoaded=true;
-imgTurtle.onload=()=>turtleLoaded=true;
-imgHippo.onload=()=>hippoLoaded=true;
-imgEagle.onload=()=>eagleLoaded=true;
-imgBoat.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Bateau.png';
-imgCroco.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Crocodile.png';
-imgShark.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Requin.png';
-imgIsland.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Ile.png';
-imgSub.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Sousmarin.png';
-imgTrunk.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Tronc.png';
-imgTurtle.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Tortue.png';
-imgHippo.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Hippopotame.png';
-imgEagle.src='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/Aigle.png';
+let boatLoaded=false,crocoLoaded=false,sharkLoaded=false,islandLoaded=false,
+    subLoaded=false,trunkLoaded=false,turtleLoaded=false,hippoLoaded=false,eagleLoaded=false;
+const BASE_IMG='https://raw.githubusercontent.com/FrancLeCoq/Hormuz/main/';
+function mkImg(file,onload){const i=new Image();i.crossOrigin='anonymous';i.onload=onload;i.src=BASE_IMG+file;return i;}
+const imgBoat  =mkImg('Bateau.png',      ()=>boatLoaded=true);
+const imgCroco =mkImg('Crocodile.png',   ()=>crocoLoaded=true);
+const imgShark =mkImg('Requin.png',      ()=>sharkLoaded=true);
+const imgIsland=mkImg('Ile.png',         ()=>islandLoaded=true);
+const imgSub   =mkImg('Sousmarin.png',   ()=>subLoaded=true);
+const imgTrunk =mkImg('Tronc.png',       ()=>trunkLoaded=true);
+const imgTurtle=mkImg('Tortue.png',      ()=>turtleLoaded=true);
+const imgHippo =mkImg('Hippopotame.png', ()=>hippoLoaded=true);
+const imgEagle =mkImg('Aigle.png',       ()=>eagleLoaded=true);
 
 function getLv(){return S?Math.min(MAX_LVL,Math.floor(S.score/PTS_LVL)+1):1;}
 function isMS(lv){return (lv||getLv())>=MORT_SUBITE;}
