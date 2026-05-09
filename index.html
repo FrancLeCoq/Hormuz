@@ -80,9 +80,7 @@ body{background:radial-gradient(ellipse at 50% 20%,#091428 0%,#040208 80%);overf
 
   <button class="btn" id="btnPlay" onclick="startGame()" disabled style="opacity:0.5;font-size:20px;padding:18px;letter-spacing:3px;border-radius:16px;box-shadow:0 0 30px rgba(22,163,74,0.5)">&#x23F3; Loading...</button>
 
-  <div id="francStatus" style="margin:10px 0 4px;padding:12px 14px;background:rgba(120,40,20,0.5);border:1.5px solid rgba(255,140,60,0.5);border-radius:14px;font-size:13px;font-weight:bold;display:none;cursor:pointer" onclick="openWallet()"></div>
-
-  <button class="btn" id="btnWallet" onclick="openWallet()" style="background:linear-gradient(135deg,#7c3aed,#4c1d95);margin-top:6px;display:none;font-size:14px">&#x1F48E; TAP TO UNLOCK 10 LIVES</button>
+  <div id="francStatus" onclick="openWallet()" style="margin:10px 0 4px;cursor:pointer;border-radius:14px;overflow:hidden;font-weight:bold;display:none"></div>
 
   <div style="margin-top:12px;padding:12px 14px;background:linear-gradient(135deg,rgba(100,40,200,0.12),rgba(168,85,247,0.06));border:1px solid rgba(168,85,247,0.3);border-radius:14px;font-size:11px;text-align:left">
     <div style="color:#c084fc;font-family:'Bangers',cursive;letter-spacing:2px;font-size:13px;margin-bottom:8px">&#x1F48E; $FRANC RULES</div>
@@ -2056,21 +2054,42 @@ function openWallet(){
 
 function updateFrancUI(){
   const statusEl=document.getElementById('francStatus');
-  const walletBtn=document.getElementById('btnWallet');
   const playBtn=document.getElementById('btnPlay');
-  if(hasFranc){
-    if(statusEl){
-      statusEl.style.display='none'; // hide the lock box when connected
+  if(statusEl){
+    statusEl.style.display='block';
+    if(hasFranc){
+      // État connecté : fond vert, checkmark, texte vert comme screenshot
+      statusEl.style.background='linear-gradient(135deg,#14532d,#166534)';
+      statusEl.style.border='2px solid #22c55e';
+      statusEl.style.padding='14px 16px';
+      statusEl.style.display='flex';
+      statusEl.style.alignItems='center';
+      statusEl.style.gap='12px';
+      statusEl.style.cursor='default';
+      statusEl.onclick=null;
+      statusEl.innerHTML=
+        '<span style="font-size:26px">&#x1F513;</span>'+
+        '<div>'+
+          '<div style="color:#4ade80;font-family:Bangers,cursive;letter-spacing:2px;font-size:17px">WALLET CONNECTED ✅</div>'+
+          '<div style="color:#86efac;font-size:11px;font-weight:normal;margin-top:2px">$FRANC detected — 10 lives unlocked!</div>'+
+        '</div>';
+    } else {
+      // État non connecté : fond brun/orange, cadenas, texte doré comme screenshot
+      statusEl.style.background='linear-gradient(135deg,#78350f,#92400e)';
+      statusEl.style.border='2px solid rgba(251,146,60,0.7)';
+      statusEl.style.padding='14px 16px';
+      statusEl.style.display='flex';
+      statusEl.style.alignItems='center';
+      statusEl.style.gap='12px';
+      statusEl.style.cursor='pointer';
+      statusEl.onclick=openWallet;
+      statusEl.innerHTML=
+        '<span style="font-size:26px">&#x1F512;</span>'+
+        '<div>'+
+          '<div style="color:#FCD34D;font-family:Bangers,cursive;letter-spacing:2px;font-size:17px">TAP TO UNLOCK 10 LIVES</div>'+
+          '<div style="color:#d97706;font-size:11px;font-weight:normal;margin-top:2px">Wallet not connected</div>'+
+        '</div>';
     }
-    if(walletBtn)walletBtn.style.display='none';
-  } else {
-    if(statusEl){
-      statusEl.style.display='block';
-      statusEl.style.background='rgba(120,40,20,0.5)';
-      statusEl.style.borderColor='rgba(255,140,60,0.6)';
-      statusEl.innerHTML='<span style="font-size:20px">&#x1F512;</span> <span style="color:#FFD700;font-size:14px;font-family:Bangers,cursive;letter-spacing:2px">TAP TO UNLOCK 10 LIVES</span><br><span style="color:#aaa;font-size:10px;font-weight:normal">Wallet not connected</span>';
-    }
-    if(walletBtn)walletBtn.style.display='none'; // lock box acts as the button
   }
   if(playBtn){playBtn.disabled=false;playBtn.style.opacity='1';playBtn.innerHTML='&#x25B6; PLAY';}
 }
