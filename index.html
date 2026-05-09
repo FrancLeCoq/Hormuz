@@ -627,12 +627,14 @@ function updateHomingEnemies(){
     } else {
       o.y+=o.vy*.5;if(o.wb)o.x+=Math.sin(frN*o.wb.wf+o.wb.wp)*o.wb.wx*0.25;
     }
-    // Shoot straight down — missile 0.1 plus rapide que la vitesse RÉELLE du bateau
+    // Shoot straight down — missile TOUJOURS plus rapide que le bateau (×2.5)
     o.shootTimer--;
     if(o.shootTimer<=0){
-      // Vitesse réelle : homing non-smart bouge à vy*0.5, homing smart à o.speed, enemy à o.speed
-      const realSpeed=o.type==='homing_enemy'&&!o.smart?Math.abs(o.vy)*0.5:Math.abs(o.speed);
-      const sp=realSpeed+0.4; // missile nettement plus rapide que le bateau
+      // Vitesse effective réelle du bateau ce frame
+      const actualBoatSpeed=o.type==='homing_enemy'
+        ?(o.smart?Math.hypot(o.vx||0,o.vy||0):Math.abs((o.vy||0)*0.5))
+        :Math.abs(o.speed||0);
+      const sp=Math.max(0.8, actualBoatSpeed*2.5); // missile toujours ×2.5 plus rapide, min 0.8
       const bx=o.x+o.w/2;
       bulls.push({x:bx-6,y:o.y+o.h,vx:0,vy:sp,life:500,r:6});
       bulls.push({x:bx+6,y:o.y+o.h,vx:0,vy:sp,life:500,r:6});
@@ -732,8 +734,8 @@ function checkCols(){
         objs.splice(i,1);S.slowTimer=(S.slowTimer||0)+180;spawnB(o.x+o.w/2,o.y+o.h/2,'#88cc44',10);continue;
       }
       if(o.type==='candy'){
-        // ALWAYS collectible — even during immunity (extends it)
-        objs.splice(i,1);boat.inv=INV;spawnB(o.x+o.w/2,o.y+o.h/2,'#ff88cc',14);continue;
+        // Collectible même en immunité, mais ne recharge pas au-delà de INV/2
+        objs.splice(i,1);if(boat.inv<INV/2)boat.inv=Math.min(INV/2,boat.inv+INV/2);spawnB(o.x+o.w/2,o.y+o.h/2,'#ff88cc',14);continue;
       }
       // All other collisions: only happen when NOT invincible
       if(boat.inv>0)continue;
@@ -886,8 +888,8 @@ function update(){
         ? margin+Math.random()*(bankW-sw-margin*2)  // bien dans la berge gauche
         : RR()+margin+Math.random()*(bankW-sw-margin*2); // bien dans la berge droite
       const turnY=60+Math.random()*(H()-180); // point où il tourne vers l'eau
-      // edgeX = point de déclenchement du saut (bord de la rivière)
-      const edgeX=side==='left'?(RL()-2):(RR()+sw+2);
+      // edgeX = déclenchement du saut exactement au bord de la berge (avant l'eau)
+      const edgeX=side==='left'?(RL()-sw-1):(RR()+1);
       objs.push({type:'chick_walking',x:startX,y:startY,w:sw,h:sh,
         vx:0, vy:vertDir*0.6, targetEdgeX:edgeX, side,
         state:'vertical', vertDir, turnY,
@@ -2189,6 +2191,9 @@ function updateNewObstacles(){
         if(o.y>H()+60||o.y<-60){objs.splice(i,1);continue;}
       } else if(o.state==='horizontal'){
         o.x+=o.vx;
+        // Clamp strict : le poussin ne peut pas entrer dans l'eau pendant la marche
+        if(o.side==='left')o.x=Math.min(o.x,RL()-o.w);
+        else o.x=Math.max(o.x,RR());
         const reached=o.side==='left'?(o.x>=o.targetEdgeX):(o.x<=o.targetEdgeX);
         if(reached){
           // Déclencher le saut parabolique (comme les tortues)
