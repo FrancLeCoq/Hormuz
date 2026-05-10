@@ -903,13 +903,14 @@ function update(){
         const side=Math.random()<0.5?'left':'right';
         const vertDir2=Math.random()<0.5?1:-1;
         const startYcw=vertDir2>0?(-sh-10):(H()+10);
-        const bankWcw=side==='left'?RL():W()-RR();
-        const margincw=Math.max(2,bankWcw*0.1);
+        // startX : très proche du bord extérieur de l'écran (2-12px)
+        // garantit que reached n'est JAMAIS vrai immédiatement
         const startXcw=side==='left'
-          ? Math.max(margincw, RL()-sw-margincw-Math.random()*(bankWcw-sw-margincw*2))
-          : Math.min(W()-sw-margincw, RR()+margincw+Math.random()*(bankWcw-sw-margincw*2));
+          ? 2+Math.random()*10                 // côté gauche : x ∈ [2, 12]
+          : W()-sw-2-Math.random()*10;         // côté droit  : x ∈ [W-sw-12, W-sw-2]
         const turnYcw=80+Math.random()*(H()-200);
-        const edgeXcw=side==='left'?(RL()-sw):(RR());
+        // edgeX : bord extérieur de la rivière (le poussin saute juste avant d'y entrer)
+        const edgeXcw=side==='left'?(RL()-sw-2):(RR()+2);
         objs.push({type:'chick_walking',x:startXcw,y:startYcw,w:sw,h:sh,
           vx:0,vy:vertDir2*0.55,targetEdgeX:edgeXcw,side,
           state:'walking_vertical',vertDir:vertDir2,turnY:turnYcw,
