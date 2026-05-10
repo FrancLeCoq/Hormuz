@@ -638,19 +638,15 @@ function updateHomingEnemies(){
     } else {
       o.y+=o.vy*.5;if(o.wb)o.x+=Math.sin(frN*o.wb.wf+o.wb.wp)*o.wb.wx*0.25;
     }
-    // Shoot straight down — missile TOUJOURS plus rapide que le bateau (×2.5)
+    // Shoot straight down — vitesse fixe basée sur o.speed (fiable, pas de _prevY)
     o.shootTimer--;
     if(o.shootTimer<=0){
-      // Vitesse effective réelle du bateau ce frame
-      // Stocker la position précédente pour mesurer la vitesse réelle
-      const prevY=o._prevY||o.y;
-      const realMoveSpeed=Math.abs(o.y-prevY);
-      o._prevY=o.y;
-      // Missile = vitesse réelle mesurée + marge fixe de 0.8 (toujours devant)
-      const sp=realMoveSpeed+0.8;
+      // Vitesse du missile = vitesse de spawn du bateau * 1.8, minimum 0.6
+      // Utilise o.speed (valeur stable définie au spawn) plutôt que la vitesse mesurée
+      const sp=Math.max(0.6, Math.abs(o.speed)*1.8);
       const bx=o.x+o.w/2;
-      bulls.push({x:bx-6,y:o.y+o.h,vx:0,vy:sp,life:200,r:6});
-      bulls.push({x:bx+6,y:o.y+o.h,vx:0,vy:sp,life:200,r:6});
+      bulls.push({x:bx-6,y:o.y+o.h,vx:0,vy:sp,life:160,r:6,color:'#ff6600'});
+      bulls.push({x:bx+6,y:o.y+o.h,vx:0,vy:sp,life:160,r:6,color:'#ff6600'});
       o.shootTimer=50+Math.floor(Math.random()*40);
       spawnB(bx,o.y+o.h*.9,'#ff8800',3);
     }
@@ -897,24 +893,27 @@ function update(){
       // Mode 2 : bas → haut (remonte le courant)
       objs.push({type:'chick',x:cxPos,y:H()+sh,w:sw,h:sh,speed:-(spd2*.55),bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2,flipY:true});
     } else {
-      // Mode 3 : poussin sur la berge — EXACTEMENT comme la tortue
-      const side=Math.random()<0.5?'left':'right';
-      const bSw=Math.min(sw,23),bSh=Math.min(sh,24);
-      const vertDir2=Math.random()<0.5?1:-1;
-      const startYcw=vertDir2>0?(-bSh-10):(H()+10);
-      const bankWcw=side==='left'?RL():W()-RR();
-      const margincw=Math.max(2,bankWcw*0.1);
-      const startXcw=side==='left'
-        ? Math.max(margincw, RL()-bSw-margincw-Math.random()*(bankWcw-bSw-margincw*2))
-        : Math.min(W()-bSw-margincw, RR()+margincw+Math.random()*(bankWcw-bSw-margincw*2));
-      const turnYcw=80+Math.random()*(H()-200);
-      const edgeXcw=side==='left'?(RL()-bSw):(RR());
-      objs.push({type:'chick_walking',x:startXcw,y:startYcw,w:bSw,h:bSh,
-        vx:0, vy:vertDir2*0.55, targetEdgeX:edgeXcw, side,
-        state:'walking_vertical', vertDir:vertDir2, turnY:turnYcw,
-        jumpT:0,jumpStartX:0,jumpStartY:0,jumpEndX:0,jumpEndY:0,rot:0,
-        walkPhase:Math.random()*Math.PI*2,
-        speed:spd2*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2});
+      // Mode 3 : berge pour s/m/l uniquement — XL reste dans l'eau
+      if(sz==='xl'){
+        objs.push({type:'chick',x:cxPos,y:-sh,w:sw,h:sh,speed:spd2*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2});
+      } else {
+        const side=Math.random()<0.5?'left':'right';
+        const vertDir2=Math.random()<0.5?1:-1;
+        const startYcw=vertDir2>0?(-sh-10):(H()+10);
+        const bankWcw=side==='left'?RL():W()-RR();
+        const margincw=Math.max(2,bankWcw*0.1);
+        const startXcw=side==='left'
+          ? Math.max(margincw, RL()-sw-margincw-Math.random()*(bankWcw-sw-margincw*2))
+          : Math.min(W()-sw-margincw, RR()+margincw+Math.random()*(bankWcw-sw-margincw*2));
+        const turnYcw=80+Math.random()*(H()-200);
+        const edgeXcw=side==='left'?(RL()-sw):(RR());
+        objs.push({type:'chick_walking',x:startXcw,y:startYcw,w:sw,h:sh,
+          vx:0,vy:vertDir2*0.55,targetEdgeX:edgeXcw,side,
+          state:'walking_vertical',vertDir:vertDir2,turnY:turnYcw,
+          jumpT:0,jumpStartX:0,jumpStartY:0,jumpEndX:0,jumpEndY:0,rot:0,
+          walkPhase:Math.random()*Math.PI*2,
+          speed:spd2*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2});
+      }
     }
   }}
   // Tortue marcheuse : tentative toutes les ~12s (frN%720)
