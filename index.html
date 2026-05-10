@@ -897,23 +897,22 @@ function update(){
       // Mode 2 : bas → haut (remonte le courant)
       objs.push({type:'chick',x:cxPos,y:H()+sh,w:sw,h:sh,speed:-(spd2*.55),bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2,flipY:true});
     } else {
-      // Mode 3 : poussin sur la berge — exactement comme les tortues
-      // Spawn hors écran, marche verticalement le long de la berge, tourne, plonge
+      // Mode 3 : poussin sur la berge — EXACTEMENT comme la tortue
       const side=Math.random()<0.5?'left':'right';
-      const bSw=Math.min(sw,19); // taille max sur la berge
-      const bSh=Math.min(sh,20);
-      const vertDir=Math.random()<0.5?1:-1;
-      const startYcw=vertDir>0?(-bSh-10):(H()+10);
-      const bankWcw=side==='left'?RL():(W()-RR());
-      const margincw=Math.max(2,bankWcw*0.15);
+      const bSw=Math.min(sw,23),bSh=Math.min(sh,24);
+      const vertDir2=Math.random()<0.5?1:-1;
+      const startYcw=vertDir2>0?(-bSh-10):(H()+10);
+      const bankWcw=side==='left'?RL():W()-RR();
+      const margincw=Math.max(2,bankWcw*0.1);
       const startXcw=side==='left'
         ? Math.max(margincw, RL()-bSw-margincw-Math.random()*(bankWcw-bSw-margincw*2))
         : Math.min(W()-bSw-margincw, RR()+margincw+Math.random()*(bankWcw-bSw-margincw*2));
       const turnYcw=80+Math.random()*(H()-200);
-      const edgeXcw=side==='left'?(RL()-bSw):(RR());
+      const edgeXcw=side==='left'?(RL()+5):(RR()-bSw-5);
       objs.push({type:'chick_walking',x:startXcw,y:startYcw,w:bSw,h:bSh,
-        vx:0, vy:vertDir*0.55, targetEdgeX:edgeXcw, side,
-        state:'vertical', vertDir, turnY:turnYcw,
+        vx:0, vy:vertDir2*0.55, targetEdgeX:edgeXcw, side,
+        state:'walking_vertical', vertDir:vertDir2, turnY:turnYcw,
+        jumpT:0,jumpStartX:0,jumpStartY:0,jumpEndX:0,jumpEndY:0,rot:0,
         walkPhase:Math.random()*Math.PI*2,
         speed:spd2*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2});
     }
@@ -2200,66 +2199,58 @@ function triggerShakeSoft(){shk=1;shkD=3;}
 function updateNewObstacles(){
   if(!S||!S.running)return;
 
-  // ── POUSSINS MARCHEURS sur la berge ──
+  // ── POUSSINS MARCHEURS sur la berge — même logique exacte que les tortues ──
   for(let i=objs.length-1;i>=0;i--){
     const o=objs[i];if(!o||o.type!=='chick_walking')continue;
     try{
-      o.walkPhase+=0.2;
-      if(o.state==='vertical'){
-        o.y+=o.vy;
-        const reached=o.vertDir>0?(o.y>=o.turnY):(o.y<=o.turnY);
-        if(reached){o.state='horizontal';o.vy=0;o.vx=o.side==='left'?0.7:-0.7;}
-        if(o.y>H()+60||o.y<-60){objs.splice(i,1);continue;}
-      } else if(o.state==='horizontal'){
-        o.x+=o.vx;
-        // Déclencher saut dès que le poussin atteint le bord de la rivière
-        const reached=o.side==='left'?(o.x+o.w>=o.targetEdgeX):(o.x<=o.targetEdgeX);
-        if(reached){
-          // Déclencher le saut parabolique (comme les tortues)
-          o.state='jumping';
-          o.jumpT=0;
-          o.jumpStartX=o.x; o.jumpStartY=o.y;
-          // Atterrissage au 1/3 ou 2/3 de la rivière selon le côté — bien accessible
-          const ri=RL(),rw=RW();
-          o.jumpEndX=o.side==='left'
-            ?(ri+rw*0.25+Math.random()*rw*0.2)
-            :(ri+rw*0.55+Math.random()*rw*0.2);
-          o.jumpEndY=o.y+10+Math.random()*15;
-        }
-        if(o.x<-60||o.x>W()+60){objs.splice(i,1);}
-      } else if(o.state==='jumping'){
-        o.jumpT+=0.045; // arc plus lent que les tortues pour le côté "mignon"
-        const t=o.jumpT;
-        if(t>=1){
-          // Atterrissage : splash + conversion en chick normal
-          const cx=o.jumpEndX+o.w/2, cy=o.jumpEndY+o.h/2;
-          if(parts.length<280){
-            for(let p=0;p<10;p++){
-              const a=Math.random()*Math.PI*2,s=1.5+Math.random()*2.5;
-              parts.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-1.5,life:14+Math.random()*10,maxLife:24,color:p%2===0?'#88ccff':'#cce8ff',r:1.5+Math.random()*1.5,type:'pop'});
-            }
-          }
-          objs.splice(i,1);
-          objs.push({type:'chick',x:o.jumpEndX,y:o.jumpEndY,w:o.w,h:o.h,speed:o.speed,bob:o.bob,sos:o.sos,sz:o.sz,pts:o.pts,wb:o.wb});
-        } else {
-          // Trajectoire parabolique
-          o.x=o.jumpStartX+(o.jumpEndX-o.jumpStartX)*t;
-          const arc=Math.sin(t*Math.PI)*38;
-          o.y=o.jumpStartY+(o.jumpEndY-o.jumpStartY)*t-arc;
-          o.rot=(o.side==='left'?1:-1)*t*0.35; // légère rotation pendant le saut
-        }
-      } else {
-        // Compat ancien état 'walking'
-        o.x+=o.vx;
-        const reached=o.side==='left'?(o.x>=o.targetEdgeX):(o.x<=o.targetEdgeX);
-        if(reached){
-          spawnB(o.x+o.w/2,o.y+o.h/2,'#88ccff',6);
-          objs.splice(i,1);
-          objs.push({type:'chick',x:o.x,y:o.y,w:o.w,h:o.h,speed:o.speed,bob:o.bob,sos:o.sos,sz:o.sz,pts:o.pts,wb:o.wb});
-          continue;
-        }
-        if(o.x<-60||o.x>W()+60){objs.splice(i,1);}
+    if(o.state==='walking_vertical'){
+      o.y+=o.vy;
+      o.walkPhase+=0.16;
+      const reachedTurn=o.vertDir>0?(o.y>=o.turnY):(o.y<=o.turnY);
+      if(reachedTurn){
+        o.state='walking_horizontal';
+        o.vy=0;
+        o.vx=o.side==='left'?0.65:-0.65;
       }
+      if(o.y>H()+50||o.y<-60){objs.splice(i,1);continue;}
+    } else if(o.state==='walking_horizontal'){
+      o.x+=o.vx;
+      o.walkPhase+=0.18;
+      const reached=o.side==='left'?(o.x>=o.targetEdgeX):(o.x<=o.targetEdgeX);
+      if(reached){
+        o.state='jumping';
+        o.jumpT=0;
+        o.jumpStartX=o.x;o.jumpStartY=o.y;
+        const ri=RL(),rw=RW();
+        o.jumpEndX=o.side==='left'?(ri+rw*0.3+Math.random()*rw*0.2):(ri+rw*0.5+Math.random()*rw*0.2);
+        o.jumpEndY=o.y+15+Math.random()*20;
+      }
+    } else if(o.state==='jumping'){
+      o.jumpT+=0.04;
+      const t=o.jumpT;
+      if(t>=1){
+        // Atterrissage : splash et conversion en poussin normal dans la rivière
+        const cx=o.jumpEndX+o.w/2,cy=o.jumpEndY+o.h/2;
+        if(parts.length<280){
+          for(let p=0;p<10;p++){
+            const a=Math.random()*Math.PI*2-Math.PI/2,s=1.5+Math.random()*3;
+            parts.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2,life:14+Math.random()*10,maxLife:24,color:p%2===0?'#88ccff':'#cce8ff',r:1.5+Math.random()*1.5,type:'pop'});
+          }
+        }
+        objs.splice(i,1);
+        objs.push({type:'chick',x:o.jumpEndX,y:o.jumpEndY,w:o.w,h:o.h,
+          speed:o.speed,bob:o.bob,sos:o.sos,sz:o.sz,pts:o.pts,wb:o.wb});
+      } else {
+        o.x=o.jumpStartX+(o.jumpEndX-o.jumpStartX)*t;
+        const arc=Math.sin(t*Math.PI)*45;
+        o.y=o.jumpStartY+(o.jumpEndY-o.jumpStartY)*t-arc;
+        o.rot=(o.side==='left'?1:-1)*t*0.4;
+      }
+    } else {
+      // fallback : état inconnu → supprimer
+      objs.splice(i,1);continue;
+    }
+    if(o.y>H()+50){objs.splice(i,1);continue;}
     }catch(e){console.warn('chick_walking error:',e);if(objs[i])objs.splice(i,1);}
   }
 
