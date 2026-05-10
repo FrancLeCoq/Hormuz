@@ -493,7 +493,7 @@ function spawnO(){
   else if(t==='croco'){const sc=0.8+Math.random()*.4;objs.push({type:'croco',x:rx(),y:fromBottom?H()+55*sc:-55*sc,w:19*sc,h:49*sc,speed:fromBottom?-randSpd():randSpd(),dir:Math.random()<.5?-1:1,sway:Math.random()*Math.PI*2,sc,tail:Math.random()*Math.PI*2,wb,hp:getHP('croco',lv),maxHp:getHP('croco',lv)});}
   else if(t==='mine'){const regularOsc=lv<=5;const vx=regularOsc?0:(Math.random()-.5)*2.2;objs.push({type:'mine',x:rx(),y:fromBottom?H()+17:-17,w:17,h:17,speed:randSpd()*.5,bob:Math.random()*Math.PI*2,vx,zig:0,zigP:45+Math.random()*60,dead:false,fromBottom,regularOsc,oscPhase:Math.random()*Math.PI*2,hp:getHP('mine',lv),maxHp:getHP('mine',lv),wb});}
   else if(t==='enemy')objs.push({type:'enemy',x:rx(),y:-72,w:60,h:66,speed:randSpd()*.55,wb,hp:getHP('enemy',lv),maxHp:getHP('enemy',lv)});
-  else if(t==='homing_enemy'){const smart=lv>=10;const _hs=randSpd()*.5;objs.push({type:'homing_enemy',x:rx(),y:-72,w:60,h:66,speed:_hs,smart,shootTimer:40+Math.floor(Math.random()*40),vx:0,vy:_hs,hp:getHP('homing_enemy',lv),maxHp:getHP('homing_enemy',lv),wb:smart?null:wb});}
+  else if(t==='homing_enemy'){const smart=lv>=10;const _hs=randSpd()*.5;objs.push({type:'homing_enemy',x:rx(),y:-72,w:60,h:66,speed:_hs,smart,shootTimer:40+Math.floor(Math.random()*40),missilesFired:0,vx:0,vy:_hs,hp:getHP('homing_enemy',lv),maxHp:getHP('homing_enemy',lv),wb:smart?null:wb});}
   else if(t==='whirlpool')objs.push({type:'whirlpool',x:rx(),y:-48,w:48,h:48,speed:randSpd()*.28,rot:0,wb});
   else if(t==='candy')objs.push({type:'candy',x:rx(),y:-17,w:17,h:17,speed:randSpd()*.55,bob:Math.random()*Math.PI*2});
   else if(t==='shark'){const side=Math.random()<0.5,sx=side?ri+mg:ri+rw-mg-40;objs.push({type:'shark',x:sx,y:-36,w:24,h:36,speed:randSpd()*.8,dir:side?1:-1,sway:Math.random()*Math.PI*2,wb,hp:getHP('shark',lv),maxHp:getHP('shark',lv)});}
@@ -638,17 +638,20 @@ function updateHomingEnemies(){
     } else {
       o.y+=o.vy*.5;if(o.wb)o.x+=Math.sin(frN*o.wb.wf+o.wb.wp)*o.wb.wx*0.25;
     }
-    // Shoot straight down — vitesse fixe basée sur o.speed (fiable, pas de _prevY)
+    // Shoot straight down — max 2 missiles, traversent tout l'écran
     o.shootTimer--;
     if(o.shootTimer<=0){
-      // Vitesse du missile = vitesse de spawn du bateau * 1.8, minimum 0.6
-      // Utilise o.speed (valeur stable définie au spawn) plutôt que la vitesse mesurée
-      const sp=Math.max(0.6, Math.abs(o.speed)*1.8);
-      const bx=o.x+o.w/2;
-      bulls.push({x:bx-6,y:o.y+o.h,vx:0,vy:sp,life:160,r:6,color:'#ff6600'});
-      bulls.push({x:bx+6,y:o.y+o.h,vx:0,vy:sp,life:160,r:6,color:'#ff6600'});
-      o.shootTimer=50+Math.floor(Math.random()*40);
-      spawnB(bx,o.y+o.h*.9,'#ff8800',3);
+      if((o.missilesFired||0)<2){
+        const sp=Math.max(0.6, Math.abs(o.speed)*1.8);
+        const bx=o.x+o.w/2;
+        // life = assez grande pour traverser tout l'écran (H/sp + marge)
+        const missileLife=Math.ceil(H()/sp)+100;
+        bulls.push({x:bx-6,y:o.y+o.h,vx:0,vy:sp,life:missileLife,r:6,color:'#ff6600'});
+        bulls.push({x:bx+6,y:o.y+o.h,vx:0,vy:sp,life:missileLife,r:6,color:'#ff6600'});
+        o.missilesFired=(o.missilesFired||0)+1;
+        o.shootTimer=50+Math.floor(Math.random()*40);
+        spawnB(bx,o.y+o.h*.9,'#ff8800',3);
+      }
     }
   }
 }
@@ -1410,7 +1413,16 @@ function drawO(o){
     ctx.globalAlpha=(ctx.globalAlpha||1)*sc;
   }
   switch(o.type){
-    case'chick':dChick(o);break;case'chick_walking':dChickWalking(o);break;case'rock':dRock(o);break;case'trunk':dTrunk(o);break;
+    case'chick':dChick(o);break;
+    case'chick_walking':
+      dChickWalking(o);
+      // DEBUG : petit marqueur rouge au-dessus pour distinguer du chick classique
+      if(getLv()>=6){
+        ctx.save();
+        ctx.fillStyle='rgba(255,0,0,0.8)';
+        ctx.beginPath();ctx.arc(o.x+o.w/2,o.y-5,3,0,Math.PI*2);ctx.fill();
+      }
+      break;case'rock':dRock(o);break;case'trunk':dTrunk(o);break;
     case'croco':dCroco(o);break;case'mine':dMine(o);break;case'enemy':dEnemyBoat(o,false);break;
     case'homing_enemy':dEnemyBoat(o,true);break;case'whirlpool':dWhirl(o);break;
     case'candy':dCandy(o);break;case'shark':dShark(o);break;case'island':dIsland(o);break;
