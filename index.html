@@ -908,7 +908,7 @@ function update(){
         ? Math.max(margincw, RL()-bSw-margincw-Math.random()*(bankWcw-bSw-margincw*2))
         : Math.min(W()-bSw-margincw, RR()+margincw+Math.random()*(bankWcw-bSw-margincw*2));
       const turnYcw=80+Math.random()*(H()-200);
-      const edgeXcw=side==='left'?(RL()+5):(RR()-bSw-5);
+      const edgeXcw=side==='left'?(RL()-bSw):(RR());
       objs.push({type:'chick_walking',x:startXcw,y:startYcw,w:bSw,h:bSh,
         vx:0, vy:vertDir2*0.55, targetEdgeX:edgeXcw, side,
         state:'walking_vertical', vertDir:vertDir2, turnY:turnYcw,
@@ -2216,7 +2216,8 @@ function updateNewObstacles(){
     } else if(o.state==='walking_horizontal'){
       o.x+=o.vx;
       o.walkPhase+=0.18;
-      const reached=o.side==='left'?(o.x>=o.targetEdgeX):(o.x<=o.targetEdgeX);
+      // Saut quand le bord avant du poussin touche exactement la rivière (jamais dans l'eau)
+      const reached=o.side==='left'?(o.x+o.w>=o.targetEdgeX):(o.x<=o.targetEdgeX);
       if(reached){
         o.state='jumping';
         o.jumpT=0;
