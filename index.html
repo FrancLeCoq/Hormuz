@@ -480,8 +480,8 @@ function spawnO(){
     const r2=Math.random();let sz='s',pts=1,sw=16,sh=17;
     const canXL=getLv()>=5;
     if(canXL&&r2<0.1){sz='xl';pts=4;sw=29;sh=30;}else if(r2<(canXL?0.3:0.2)){sz='l';pts=3;sw=23;sh=24;}else if(r2<(canXL?0.63:0.53)){sz='m';pts=2;sw=19;sh=20;}
-    // cxPos : recentré avec marges plus grandes pour éviter les bords
-    const cxPos=RL()+RW()*0.15+Math.random()*(RW()*0.70-sw);
+    // cxPos : centré loin des deux bords (20%-80% de la rivière)
+    const cxPos=RL()+RW()*0.20+Math.random()*Math.max(1,RW()*0.60-sw);
     objs.push({type:'chick',x:cxPos,y:-sh,w:sw,h:sh,speed:randSpd()*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb});
   }
   else if(t==='rock'){const big=Math.random()<0.3,rw2=big?32:22,rh=big?28:20;objs.push({type:'rock',x:rx(),y:fromBottom?H()+rh:-rh,w:rw2,h:rh,speed:fromBottom?-randSpd():randSpd(),wb,hp:getHP('rock',lv),maxHp:getHP('rock',lv)});}
@@ -886,8 +886,8 @@ function update(){
     const r2=Math.random();let sz='s',pts=1,sw=16,sh=17;
     const canXL=getLv()>=5;
     if(canXL&&r2<0.1){sz='xl';pts=4;sw=29;sh=30;}else if(r2<(canXL?0.3:0.2)){sz='l';pts=3;sw=23;sh=24;}else if(r2<(canXL?0.63:0.53)){sz='m';pts=2;sw=19;sh=20;}
-    // cxPos : recentré avec marges plus grandes pour éviter les bords
-    const cxPos=RL()+RW()*0.15+Math.random()*(RW()*0.70-sw);
+    // cxPos : centré loin des deux bords (20%-80% de la rivière)
+    const cxPos=RL()+RW()*0.20+Math.random()*Math.max(1,RW()*0.60-sw);
     const mode=Math.random();
     if(mode<0.45){
       // Mode 1 : haut → bas (classique)
@@ -896,25 +896,8 @@ function update(){
       // Mode 2 : bas → haut (remonte le courant)
       objs.push({type:'chick',x:cxPos,y:H()+sh,w:sw,h:sh,speed:-(spd2*.55),bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2,flipY:true});
     } else {
-      // Mode 3 : IDENTIQUE niveau 1 à 11 — taille jamais supérieure à 'l' (sw=23)
-      // Forcer sw/sh au max large (taille 'l') pour que le calcul soit stable
-      const sw3=Math.min(sw,23), sh3=Math.min(sh,24);
-      const side=Math.random()<0.5?'left':'right';
-      const vertDir2=Math.random()<0.5?1:-1;
-      const startYcw=vertDir2>0?(-sh3-10):(H()+10);
-      const bankWcw=side==='left'?RL():W()-RR();
-      const margincw=Math.max(2,bankWcw*0.1);
-      const startXcw=side==='left'
-        ? Math.max(margincw, RL()-sw3-margincw-Math.random()*(bankWcw-sw3-margincw*2))
-        : Math.min(W()-sw3-margincw, RR()+margincw+Math.random()*(bankWcw-sw3-margincw*2));
-      const turnYcw=80+Math.random()*(H()-200);
-      const edgeXcw=side==='left'?(RL()-sw3):(RR());
-      objs.push({type:'chick_walking',x:startXcw,y:startYcw,w:sw3,h:sh3,
-        vx:0,vy:vertDir2*0.55,targetEdgeX:edgeXcw,side,
-        state:'walking_vertical',vertDir:vertDir2,turnY:turnYcw,
-        jumpT:0,jumpStartX:0,jumpStartY:0,jumpEndX:0,jumpEndY:0,rot:0,
-        walkPhase:Math.random()*Math.PI*2,
-        speed:spd2*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2});
+      // Mode 3 = mode 1 : poussin dans l'eau haut→bas
+      objs.push({type:'chick',x:cxPos,y:-sh,w:sw,h:sh,speed:spd2*.6,bob:Math.random()*Math.PI*2,sos:Math.random()*Math.PI*2,sz,pts,wb:wb2});
     }
   }}
   // Tortue marcheuse : tentative toutes les ~12s (frN%720)
