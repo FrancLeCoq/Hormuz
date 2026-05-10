@@ -903,7 +903,7 @@ function update(){
   // Tortue marcheuse : tentative toutes les ~12s (frN%720)
   if(frN%720===180&&Math.random()<0.7)spawnWalkingTurtle();
   scY+=(isMob?(0.0095+getLv()*.00225):(0.019+getLv()*.0045));
-  updateMines();updateHomingEnemies();updateWhirlpools();updateNarrowPassages();updateSubmarines();updateNewObstacles();
+  updateMines();updateHomingEnemies();updateWhirlpools();updateSubmarines();updateNewObstacles();
   if(fireCD>0)fireCD--;
   if(getLv()>=4)doFire(); // auto-fire
   if(spinOn){spinA+=spinSp;spinT--;if(spinT<=0)spinSp*=.90;if(Math.abs(spinSp)<.008)spinOn=false;}
@@ -1287,7 +1287,7 @@ function drawScene(){
       }
     }
   }
-  drawRiver(false);drawLampposts();drawNarrow();drawObjs();drawBullets();drawExps();
+  drawRiver(false);drawLampposts();drawObjs();drawBullets();drawExps();
   // Bords rouges niveau 11
   if(S&&getLv()>=11){
     const bw=RL();
@@ -1407,7 +1407,7 @@ case'chick_walking':dChickWalking(o);break;case'rock':dRock(o);break;case'trunk'
   ctx.globalAlpha=1;
   // HP bar only from level 4, and only after first hit (hp < maxHp)
   if(o.hp!==undefined&&o.maxHp&&o.hp<o.maxHp&&getLv()>=4){
-    const bw=o.w+8,bh=4,bx=o.x-4,by=o.y-8;
+    const bw=Math.min(o.w+8,44),bh=4,bx=o.x+o.w/2-bw/2,by=o.y-8;
     ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(bx,by,bw,bh);
     const pct=o.hp/o.maxHp;
     ctx.fillStyle=pct>0.6?'#44ff44':pct>0.3?'#ffaa00':'#ff3333';
@@ -1644,15 +1644,11 @@ function dShark(o){
   const wag=Math.sin(Date.now()*.008+o.sway)*0.12;ctx.rotate(wag);
   if(sharkLoaded&&imgShark.naturalWidth>0){
     const dw=o.w*2.2,dh=o.h*2.2;
-    // Leger decalage bas (immersion legere), clip le bas seulement
-    const immersion=dh*0.15;
-    ctx.save();
-    ctx.beginPath();ctx.rect(-dw/2,-dh/2,dw,dh-immersion);ctx.clip();
+    // Pas de clip : requin entièrement visible (tête hors de l'eau)
     ctx.drawImage(imgShark,-dw/2,-dh/2,dw,dh);
-    ctx.restore();
-    // Ligne de flottaison au bas
-    const waterY=dh/2-immersion;
-    ctx.strokeStyle='rgba(140,200,255,0.45)';ctx.lineWidth=1.5;
+    // Ligne de flottaison légère à mi-hauteur
+    const waterY=dh*0.1;
+    ctx.strokeStyle='rgba(140,200,255,0.4)';ctx.lineWidth=1.5;
     ctx.beginPath();
     for(let xx=-dw*0.45;xx<dw*0.45;xx+=4){
       const wy=waterY+Math.sin(xx*0.2+frN*0.07)*1.3;
