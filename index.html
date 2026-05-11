@@ -358,6 +358,7 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('keyup',e=>{keys[e.key]=false;});
 let mX=null,mY=null,mouseAct=false;
+const KSP=4; // vitesse clavier PC
 // Souris PC : coordonnées relatives au canvas (fonctionne dans Telegram Web aussi)
 function getMousePos(e){const r=C.getBoundingClientRect();return{x:(e.clientX-r.left)*(C.width/r.width),y:(e.clientY-r.top)*(C.height/r.height)};}
 C.addEventListener('mousemove',e=>{
@@ -374,15 +375,19 @@ C.addEventListener('mouseleave',e=>{mouseAct=false;},{passive:false});
 
 function handleInput(){
   if(!S||!S.running||boat.sink>0||spinOn)return;
-  if(isMob){
+  if(mX!==null){
+    // Souris PC : priorité absolue, fonctionne même si isMob (Telegram Web fenêtre étroite)
+    boat.x+=(mX-boat.w/2-boat.x)*.18;
+    boat.y+=(mY-boat.h/2-boat.y)*.18;
+  } else if(isMob){
     if(inputMode==='joystick'&&joyAct){const n=Math.hypot(joyDX,joyDY);if(n>0.06){const curve=n*n*.4+n*.6,a=Math.atan2(joyDY,joyDX),sp=curve*JSP;boat.x+=Math.cos(a)*sp;boat.y+=Math.sin(a)*sp;}}
     else if(inputMode==='drag'&&dragAct){boat.x+=(dragX-boat.w/2-boat.x)*DL;boat.y+=((dragY-FO)-boat.y)*DL;}
   } else {
-    if(mX!==null){
-      // Suivre la souris en douceur
-      boat.x+=(mX-boat.w/2-boat.x)*.18;
-      boat.y+=(mY-boat.h/2-boat.y)*.18;
-    }
+    // Clavier PC sans souris
+    if(keys['ArrowLeft']||keys['a'])boat.x-=KSP;
+    if(keys['ArrowRight']||keys['d'])boat.x+=KSP;
+    if(keys['ArrowUp']||keys['w'])boat.y-=KSP;
+    if(keys['ArrowDown']||keys['s'])boat.y+=KSP;
   }
   if(S&&S.slowTimer>0)S.slowTimer--;
   const slowMult=S&&S.slowTimer>0?0.45:1.0;
