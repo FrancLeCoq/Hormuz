@@ -50,14 +50,14 @@ body{background:radial-gradient(ellipse at 50% 20%,#091428 0%,#040208 80%);overf
 <canvas id="gc"></canvas>
 <div id="ui">
   <div class="ui-left">
-    <div class="ui-label">SCORE</div>
+    <div class="ui-label" id="lblScore">SCORE</div>
     <div class="ui-score" id="scoreEl">0</div>
-    <div class="ui-label" style="margin-top:4px">LEVEL</div>
+    <div class="ui-label" id="lblLevel" style="margin-top:4px">LEVEL</div>
     <div class="ui-level" id="levelEl">1</div>
   </div>
   <div class="ui-right">
     <div id="livesEl" class="ui-lives"></div>
-    <div class="ui-label" style="margin-top:4px;text-align:right">HEURE</div>
+    <div class="ui-label" id="lblTime" style="margin-top:4px;text-align:right">HEURE</div>
     <div class="ui-clock" id="clockEl" style="text-align:right">12h00</div>
   </div>
 </div>
@@ -75,22 +75,31 @@ body{background:radial-gradient(ellipse at 50% 20%,#091428 0%,#040208 80%);overf
 <button id="modeToggle" onclick="toggleInputMode()">Joystick</button>
 <div id="panel">
   <div style="font-size:42px;margin-bottom:2px;text-shadow:0 0 30px rgba(255,215,0,0.8),0 0 60px rgba(255,165,0,0.4);font-family:'Bangers',cursive;letter-spacing:5px;color:#FFD700">&#x2693; HORMUZ</div>
-  <p style="font-size:12px;color:#88aacc;margin-bottom:4px;letter-spacing:1px">SAVE DROWNING CHICKS &amp; SURVIVE THE RIVER</p>
+  <p id="subtitle" style="font-size:12px;color:#88aacc;margin-bottom:4px;letter-spacing:1px">SAVE DROWNING CHICKS &amp; SURVIVE THE RIVER</p>
   <div style="width:60%;height:1px;background:linear-gradient(90deg,transparent,rgba(168,85,247,0.6),transparent);margin:8px auto 14px"></div>
 
   <button class="btn" id="btnPlay" onclick="startGame()" disabled style="opacity:0.5;font-size:20px;padding:18px;letter-spacing:3px;border-radius:16px;box-shadow:0 0 30px rgba(22,163,74,0.5)">&#x23F3; Loading...</button>
 
+  <button class="btn" id="btnScores" onclick="toggleScores()" style="margin-top:10px;background:linear-gradient(135deg,#7c3aed,#5b21b6);font-size:16px;padding:12px;letter-spacing:2px;border-radius:14px">&#x1F3C6; <span id="lblScores">HIGH SCORES</span></button>
+
+  <div id="scoresBox" style="display:none;margin-top:10px;padding:14px;background:linear-gradient(135deg,rgba(124,58,237,0.18),rgba(91,33,182,0.1));border:1.5px solid rgba(168,85,247,0.5);border-radius:14px"></div>
+
   <div id="francStatus" onclick="openWallet()" style="margin:10px 0 4px;cursor:pointer;border-radius:14px;overflow:hidden;font-weight:bold;display:none"></div>
 
+  <div style="display:flex;justify-content:center;gap:14px;margin:10px 0 4px">
+    <button onclick="setLang('fr')" id="flagFr" style="font-size:30px;background:none;border:2px solid transparent;border-radius:10px;padding:4px 8px;cursor:pointer;transition:all 0.2s">&#x1F1EB;&#x1F1F7;</button>
+    <button onclick="setLang('en')" id="flagEn" style="font-size:30px;background:none;border:2px solid transparent;border-radius:10px;padding:4px 8px;cursor:pointer;transition:all 0.2s">&#x1F1EC;&#x1F1E7;</button>
+  </div>
+
   <div style="margin-top:12px;padding:12px 14px;background:linear-gradient(135deg,rgba(100,40,200,0.12),rgba(168,85,247,0.06));border:1px solid rgba(168,85,247,0.3);border-radius:14px;font-size:11px;text-align:left">
-    <div style="color:#c084fc;font-family:'Bangers',cursive;letter-spacing:2px;font-size:13px;margin-bottom:8px">&#x1F48E; $FRANC RULES</div>
+    <div id="rulesTitle" style="color:#c084fc;font-family:'Bangers',cursive;letter-spacing:2px;font-size:13px;margin-bottom:8px">&#x1F48E; $FRANC RULES</div>
     <div style="display:flex;align-items:center;gap:6px;color:#ff8888;margin-bottom:4px">
       <span style="font-size:16px">&#x1F90D;</span>
-      <span>Without $FRANC: <b style="color:#fff">1 life only</b></span>
+      <span id="ruleNoFranc">Without $FRANC: <b style="color:#fff">1 life only</b></span>
     </div>
     <div style="display:flex;align-items:center;gap:6px;color:#a3e635">
       <span style="font-size:16px">&#x1F49A;</span>
-      <span>Holding $FRANC: <b style="color:#FFD700">10 lives</b> + bonuses</span>
+      <span id="ruleFranc">Holding $FRANC: <b style="color:#FFD700">10 lives</b> + bonuses</span>
     </div>
   </div>
 </div>
@@ -149,6 +158,100 @@ function skyColor(){
   return {r:0,g:0,b:0,a:0};
 }
 const SUPABASE_URL='https://mubqtnqulpyehkgubhnh.supabase.co/functions/v1';
+
+// ─── SYSTÈME DE LANGUE FR/EN ───
+let LANG=localStorage.getItem('hormuz_lang')||'fr';
+const I18N={
+  fr:{
+    subtitle:"SAUVE LES POUSSINS &amp; SURVIS À LA RIVIÈRE",
+    play:"&#x25B6; JOUER",
+    loading:"&#x23F3; Chargement...",
+    scores:"MEILLEURS SCORES",
+    rulesTitle:"&#x1F48E; RÈGLES $FRANC",
+    ruleNoFranc:"Sans $FRANC : <b style='color:#fff'>1 seule vie</b>",
+    ruleFranc:"Avec $FRANC : <b style='color:#FFD700'>10 vies</b> + bonus",
+    walletConnected:"WALLET CONNECTÉ ✅",
+    walletConnectedSub:"$FRANC détecté — 10 vies débloquées !",
+    walletLocked:"TAPE POUR DÉBLOQUER 10 VIES",
+    walletLockedSub:"Wallet non connecté",
+    gameOver:"PERDU !",
+    score:"Score",
+    level:"Niveau",
+    best:"Meilleur",
+    retry:"&#x21BB; REJOUER",
+    menu:"MENU",
+    noScores:"Aucun score pour le moment",
+    yourTop:"Ton Top 3"
+  },
+  en:{
+    subtitle:"SAVE DROWNING CHICKS &amp; SURVIVE THE RIVER",
+    play:"&#x25B6; PLAY",
+    loading:"&#x23F3; Loading...",
+    scores:"HIGH SCORES",
+    rulesTitle:"&#x1F48E; $FRANC RULES",
+    ruleNoFranc:"Without $FRANC: <b style='color:#fff'>1 life only</b>",
+    ruleFranc:"Holding $FRANC: <b style='color:#FFD700'>10 lives</b> + bonuses",
+    walletConnected:"WALLET CONNECTED ✅",
+    walletConnectedSub:"$FRANC detected — 10 lives unlocked!",
+    walletLocked:"TAP TO UNLOCK 10 LIVES",
+    walletLockedSub:"Wallet not connected",
+    gameOver:"GAME OVER!",
+    score:"Score",
+    level:"Level",
+    best:"Best",
+    retry:"&#x21BB; RETRY",
+    menu:"MENU",
+    noScores:"No scores yet",
+    yourTop:"Your Top 3"
+  }
+};
+function T(key){return (I18N[LANG]&&I18N[LANG][key])||I18N.en[key]||key;}
+function setLang(lang){
+  LANG=lang;
+  try{localStorage.setItem('hormuz_lang',lang);}catch(e){}
+  applyLang();
+}
+function applyLang(){
+  const set=(id,html)=>{const el=document.getElementById(id);if(el)el.innerHTML=html;};
+  set('subtitle',T('subtitle'));
+  set('lblScores',T('scores'));
+  set('rulesTitle',T('rulesTitle'));
+  set('ruleNoFranc',T('ruleNoFranc'));
+  set('ruleFranc',T('ruleFranc'));
+  set('lblScore',LANG==='fr'?'SCORE':'SCORE');
+  set('lblLevel',LANG==='fr'?'NIVEAU':'LEVEL');
+  set('lblTime',LANG==='fr'?'HEURE':'TIME');
+  // Bouton play selon état de chargement
+  const playBtn=document.getElementById('btnPlay');
+  if(playBtn&&!playBtn.disabled)playBtn.innerHTML=T('play');
+  // Drapeau actif : surligné
+  const ff=document.getElementById('flagFr'),fe=document.getElementById('flagEn');
+  if(ff)ff.style.borderColor=LANG==='fr'?'#FFD700':'transparent';
+  if(fe)fe.style.borderColor=LANG==='en'?'#FFD700':'transparent';
+  // Mettre à jour le wallet status et les scores si affichés
+  if(typeof updateFrancUI==='function')updateFrancUI();
+  const sb=document.getElementById('scoresBox');
+  if(sb&&sb.style.display!=='none')renderScores();
+}
+function renderScores(){
+  const sb=document.getElementById('scoresBox');if(!sb)return;
+  const top=getTop3();
+  if(top.length===0){
+    sb.innerHTML='<div style="color:#c084fc;font-size:13px">'+T('noScores')+'</div>';
+    return;
+  }
+  const medals=['&#x1F947;','&#x1F948;','&#x1F949;'];
+  let html='<div style="color:#FFD700;font-family:Bangers,cursive;letter-spacing:2px;font-size:15px;margin-bottom:8px">'+T('yourTop')+'</div>';
+  top.forEach((s,i)=>{
+    html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;font-size:15px"><span>'+medals[i]+'</span><span style="color:#FFD700;font-weight:bold;font-family:monospace">'+s+'</span></div>';
+  });
+  sb.innerHTML=html;
+}
+function toggleScores(){
+  const sb=document.getElementById('scoresBox');if(!sb)return;
+  if(sb.style.display==='none'){sb.style.display='block';renderScores();}
+  else{sb.style.display='none';}
+}
 const WALLET_URL='https://t.me/FrancisLeCoqBot/wallet';
 let inputMode=localStorage.getItem('rm')||'drag';
 let joyAct=false,joyDX=0,joyDY=0,dragAct=false,dragX=0,dragY=0;
@@ -193,12 +296,12 @@ function updateUI(){
   if(isMS()){
     document.getElementById('barFill').style.width='100%';
     document.getElementById('barFill').style.background='linear-gradient(90deg,#ff2222,#ff8800)';
-    document.getElementById('barLbl').textContent='MORT SUBITE — Score: '+S.score;
+    document.getElementById('barLbl').textContent=(LANG==='fr'?'MORT SUBITE — Score: ':'SUDDEN DEATH — Score: ')+S.score;
   } else {
     const prog=(S.score%PTS_LVL)/PTS_LVL*100;
     document.getElementById('barFill').style.width=prog+'%';
     document.getElementById('barFill').style.background='linear-gradient(90deg,#a855f7,#FFD700)';
-    document.getElementById('barLbl').textContent=(S.score%PTS_LVL)+' / '+PTS_LVL+' pts → Niv '+(lv<MAX_LVL?lv+1:'MAX');
+    document.getElementById('barLbl').textContent=(S.score%PTS_LVL)+' / '+PTS_LVL+(LANG==='fr'?' pts → Niv ':' pts → Lvl ')+(lv<MAX_LVL?lv+1:'MAX');
   }
   const ab=document.getElementById('actionBtns');
   ab.style.display='none'; // auto-fire, no button needed
@@ -268,16 +371,21 @@ function gameOver(){
     if(window._masterGain&&audioCtx){window._masterGain.gain.cancelScheduledValues(audioCtx.currentTime);window._masterGain.gain.setTargetAtTime(0,audioCtx.currentTime,0.05);}
   }catch(e){}
   saveScore();
-  showMsg('GAME OVER',99999,'gameover');
+  showMsg(T('gameOver').replace(/<[^>]+>/g,''),99999,'gameover');
   setTimeout(()=>{
     const p=document.getElementById('panel');
+    const top3=getTop3(),best=top3.length?top3[0]:S.score;
     p.style.borderColor='rgba(200,0,0,0.7)';p.style.boxShadow='0 0 80px rgba(180,0,0,0.7)';
-    p.innerHTML='<h2 style="color:#ff0000">GAME OVER</h2><p style="font-size:17px;color:#FFD700;font-family:Bangers,cursive;letter-spacing:2px">Score : <b>'+S.score+'</b> pts</p><p style="color:#c9aaee">Niveau: <b style="color:#fff">'+getLv()+'</b>'+(isMS()?'<br><span style="color:#ff4444">MORT SUBITE</span>':'')+'</p><button class="btn btn-red" onclick="startGame('+hasFranc+')">REJOUER</button>';
+    p.innerHTML='<h2 style="color:#ff0000">'+T('gameOver')+'</h2>'+
+      '<p style="font-size:17px;color:#FFD700;font-family:Bangers,cursive;letter-spacing:2px">'+T('score')+' : <b>'+S.score+'</b> pts</p>'+
+      '<p style="color:#c9aaee">'+T('level')+': <b style="color:#fff">'+getLv()+'</b>'+(isMS()?'<br><span style="color:#ff4444">MORT SUBITE</span>':'')+'</p>'+
+      '<p style="color:#a3e635;font-size:14px">&#x1F3C6; '+T('best')+': <b style="color:#FFD700">'+best+'</b></p>'+
+      '<button class="btn btn-red" onclick="startGame('+hasFranc+')">'+T('retry')+'</button>';
     p.classList.remove('hidden');document.getElementById('msg').className='';
   },2200);
 }
 function showMsg(t,d,cls){clearTimeout(mTout);const el=document.getElementById('msg');el.textContent=t;el.className=cls?'show '+cls:'show';if(d<99999)mTout=setTimeout(()=>el.className='',d);}
-function showLU(lv){clearTimeout(lTout);const el=document.getElementById('levelup');el.textContent=isMS(lv)?'MORT SUBITE!':'NIVEAU '+lv+' !';el.style.color=isMS(lv)?'#ff2222':'#FFD700';el.className='show';lTout=setTimeout(()=>el.className='',2500);}
+function showLU(lv){clearTimeout(lTout);const el=document.getElementById('levelup');const sd=LANG==='fr'?'MORT SUBITE!':'SUDDEN DEATH!';const nv=LANG==='fr'?'NIVEAU ':'LEVEL ';el.textContent=isMS(lv)?sd:nv+lv+' !';el.style.color=isMS(lv)?'#ff2222':'#FFD700';el.className='show';lTout=setTimeout(()=>el.className='',2500);}
 
 // ── MOBILE ──
 function setMob(on){if(!isMob)return;document.getElementById('modeToggle').style.display=on?'block':'none';if(!on){document.getElementById('joyBase').style.display='none';document.getElementById('joyStick').style.display='none';document.getElementById('actionBtns').style.display='none';}}
@@ -907,7 +1015,7 @@ function update(){
   }}
   // Tortue marcheuse : tentative toutes les ~12s (frN%720)
   if(frN%720===180&&Math.random()<0.7)spawnWalkingTurtle();
-  scY+=(isMob?(0.0095+getLv()*.00225):(0.019+getLv()*.0045));
+  scY+=(isMob?(0.038+getLv()*.009):(0.076+getLv()*.018));
   updateMines();updateHomingEnemies();updateWhirlpools();updateSubmarines();updateNewObstacles();
   if(fireCD>0)fireCD--;
   if(getLv()>=4)doFire(); // auto-fire
@@ -1800,7 +1908,7 @@ function drawHUD(){
   const lv=getLv();
   ctx.fillStyle=isMS()?'rgba(255,60,60,.8)':'rgba(255,255,255,.55)';ctx.font='bold 11px monospace';ctx.textAlign='left';ctx.fillText(isMS()?'MORT SUBITE':'LVL '+lv,RL()+6,H()-22);
   if(!isMob&&S&&S.running&&getLv()>=4){const lv2=getLv();ctx.fillStyle='rgba(0,200,255,0.5)';ctx.font='9px monospace';ctx.fillText(lv2>=6?'[Space] Machine gun':'[Space] Fire',RL()+6,H()-8);}
-  if(hasFranc){ctx.fillStyle='rgba(163,230,53,0.7)';ctx.font='9px monospace';ctx.textAlign='right';ctx.fillText('$FRANC next bonus: '+nextFrancBonus+'pts',RR()-6,H()-8);}
+  if(hasFranc){ctx.fillStyle='rgba(163,230,53,0.7)';ctx.font='9px monospace';ctx.textAlign='right';ctx.fillText('$FRANC '+(LANG==='fr'?'prochain bonus: ':'next bonus: ')+nextFrancBonus+'pts',RR()-6,H()-8);}
   // Combo counter hint
   if(comboCount>0&&comboMult===1){
     ctx.fillStyle='rgba(255,215,0,0.7)';ctx.font='bold 10px Bangers,cursive';ctx.textAlign='center';
@@ -2077,8 +2185,8 @@ function updateFrancUI(){
       statusEl.innerHTML=
         '<span style="font-size:26px">&#x1F513;</span>'+
         '<div>'+
-          '<div style="color:#4ade80;font-family:Bangers,cursive;letter-spacing:2px;font-size:17px">WALLET CONNECTED ✅</div>'+
-          '<div style="color:#86efac;font-size:11px;font-weight:normal;margin-top:2px">$FRANC detected — 10 lives unlocked!</div>'+
+          '<div style="color:#4ade80;font-family:Bangers,cursive;letter-spacing:2px;font-size:17px">'+T('walletConnected')+'</div>'+
+          '<div style="color:#86efac;font-size:11px;font-weight:normal;margin-top:2px">'+T('walletConnectedSub')+'</div>'+
         '</div>';
     } else {
       // État non connecté : fond brun/orange, cadenas, texte doré comme screenshot
@@ -2093,12 +2201,12 @@ function updateFrancUI(){
       statusEl.innerHTML=
         '<span style="font-size:26px">&#x1F512;</span>'+
         '<div>'+
-          '<div style="color:#FCD34D;font-family:Bangers,cursive;letter-spacing:2px;font-size:17px">TAP TO UNLOCK 10 LIVES</div>'+
-          '<div style="color:#d97706;font-size:11px;font-weight:normal;margin-top:2px">Wallet not connected</div>'+
+          '<div style="color:#FCD34D;font-family:Bangers,cursive;letter-spacing:2px;font-size:17px">'+T('walletLocked')+'</div>'+
+          '<div style="color:#d97706;font-size:11px;font-weight:normal;margin-top:2px">'+T('walletLockedSub')+'</div>'+
         '</div>';
     }
   }
-  if(playBtn){playBtn.disabled=false;playBtn.style.opacity='1';playBtn.innerHTML='&#x25B6; PLAY';}
+  if(playBtn){playBtn.disabled=false;playBtn.style.opacity='1';playBtn.innerHTML=T('play');}
 }
 
 async function detectFranc(){
@@ -2126,24 +2234,25 @@ async function detectFranc(){
   },{once:false});
 }
 
+// Scores 100% locaux (localStorage) — pas de sauvegarde en ligne
 function saveScore(){
-  const tg=window.Telegram?.WebApp;
-  if(!tg?.initData||!S)return;
-  fetch(SUPABASE_URL+'/save-score',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      initData:tg.initData,
-      game_id:'hormuz',
-      score:S.score,
-      level_reached:getLv(),
-      eggs_collected:S.score
-    })
-  }).catch(()=>{});
+  if(!S)return;
+  try{
+    const scores=JSON.parse(localStorage.getItem('hormuz_top3')||'[]');
+    scores.push(S.score);
+    scores.sort((a,b)=>b-a);
+    const top3=scores.slice(0,3);
+    localStorage.setItem('hormuz_top3',JSON.stringify(top3));
+  }catch(e){}
+}
+function getTop3(){
+  try{return JSON.parse(localStorage.getItem('hormuz_top3')||'[]');}catch(e){return [];}
 }
 
 // Start Telegram detection
 detectFranc();
+// Appliquer la langue choisie au chargement
+applyLang();
 // Re-poll every 10s while on menu
 setInterval(()=>{if(!S?.running)detectFranc();},10000);
 
