@@ -987,9 +987,9 @@ function update(){
   // même si le navigateur throttle le requestAnimationFrame (ex: pas de touch)
   const now=performance.now();
   if(!window._lastUpdate)window._lastUpdate=now;
-  let dt=(now-window._lastUpdate)/16.667; // 16.667ms = 1 frame à 60fps
+  let dt=(now-window._lastUpdate)/8.333; // 8.333ms = 1 frame à 120fps (référence)
   window._lastUpdate=now;
-  if(dt>3)dt=3; // cap pour éviter les sauts énormes (onglet en arrière-plan)
+  if(dt>4)dt=4; // cap pour éviter les sauts énormes (onglet en arrière-plan)
   if(dt<0.1)dt=0.1;
   window._dt=dt;
   frN++;handleInput();
