@@ -328,7 +328,7 @@ function startGame(){
   document.getElementById('panel').style.borderColor='';document.getElementById('panel').style.boxShadow='';
   document.getElementById('msg').className='';
   S={running:true,lives:MAX_LIVES,score:0,gameSeconds:0,level:1};
-  boat=iB();objs=[];bulls=[];pBulls=[];exps=[];parts=[];savFX=[];keys={};scY=0;frN=0;narrowPassages=[];window._lastUpdate=performance.now();
+  boat=iB();objs=[];bulls=[];pBulls=[];exps=[];parts=[];savFX=[];keys={};scY=0;frN=0;narrowPassages=[];
   spinOn=false;spinA=0;spinSp=0;spinT=0;
   fireOn=false;fireCD=0;
   clearInterval(tInt);clearInterval(sInt);
@@ -983,15 +983,6 @@ function checkCols(){
 
 function update(){
   if(!S||!S.running)return;
-  // dt : facteur de temps réel normalisé à 60fps — garde une vitesse constante
-  // même si le navigateur throttle le requestAnimationFrame (ex: pas de touch)
-  const now=performance.now();
-  if(!window._lastUpdate)window._lastUpdate=now;
-  let dt=(now-window._lastUpdate)/8.333; // 8.333ms = 1 frame à 120fps (référence)
-  window._lastUpdate=now;
-  if(dt>4)dt=4; // cap pour éviter les sauts énormes (onglet en arrière-plan)
-  if(dt<0.1)dt=0.1;
-  window._dt=dt;
   frN++;handleInput();
   if(frN%60===0){updateAmbientSound();}
   // Poussins : fréquence croissante par niveau
@@ -1024,7 +1015,7 @@ function update(){
   }}
   // Tortue marcheuse : tentative toutes les ~12s (frN%720)
   if(frN%720===180&&Math.random()<0.7)spawnWalkingTurtle();
-  scY+=(isMob?(0.038+getLv()*.009):(0.076+getLv()*.018))*window._dt;
+  scY+=(isMob?(0.038+getLv()*.009):(0.076+getLv()*.018));
   updateMines();updateHomingEnemies();updateWhirlpools();updateSubmarines();updateNewObstacles();
   if(fireCD>0)fireCD--;
   if(getLv()>=4)doFire(); // auto-fire
@@ -1061,11 +1052,11 @@ function update(){
       }
     }
   }
-  bulls=bulls.filter(b=>{b.x+=b.vx*window._dt;b.y+=b.vy*window._dt;b.life--;return b.life>0&&b.x>RL()-20&&b.x<RR()+20&&b.y>-20&&b.y<H()+20;});
-  pBulls=pBulls.filter(b=>{b.x+=b.vx*window._dt;b.y+=b.vy*window._dt;b.life--;return b.life>0&&b.x>RL()-20&&b.x<RR()+20&&b.y>-20&&b.y<H()+20;});
+  bulls=bulls.filter(b=>{b.x+=b.vx;b.y+=b.vy;b.life--;return b.life>0&&b.x>RL()-20&&b.x<RR()+20&&b.y>-20&&b.y<H()+20;});
+  pBulls=pBulls.filter(b=>{b.x+=b.vx;b.y+=b.vy;b.life--;return b.life>0&&b.x>RL()-20&&b.x<RR()+20&&b.y>-20&&b.y<H()+20;});
   for(let i=objs.length-1;i>=0;i--){
     if(!objs[i])continue;const o=objs[i];
-    if(o.type!=='homing_enemy'||!o.smart) o.y+=o.speed*window._dt;
+    if(o.type!=='homing_enemy'||!o.smart) o.y+=o.speed;
     // Courant : dévier les obstacles/animaux qui traversent une current_zone
     if(o.type!=='current_zone'&&o.type!=='chick'&&o.type!=='golden_chick'&&o.type!=='chick_walking'&&o.type!=='candy'){
       for(const cz of objs){
