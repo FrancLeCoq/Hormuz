@@ -114,6 +114,9 @@ let MAX_LIVES=1;
 const MORT_SUBITE=11;
 const isMob=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)||W()<700;
 let hasFranc=false;
+let francBalance=0;
+let walletLinked=false;
+let unlockReason=localStorage.getItem('flc_reason')||null;  // "solana" | "ton" | "stars" | null
 let comboCount=0,comboMult=1,comboTimer=0;
 let submarines=[];  // ally submarines
 let weather={type:'clear',timer:0,intensity:0,nextIn:600+Math.floor(Math.random()*200),rainCount:0,fogCount:0};
@@ -2182,11 +2185,19 @@ function updateFrancUI(){
       statusEl.style.gap='12px';
       statusEl.style.cursor='default';
       statusEl.onclick=null;
+      let connectedSub;
+      if(unlockReason==='stars'){
+        connectedSub='Unlocked via ⭐';
+      } else {
+        const sym = unlockReason==='ton' ? '💎' : '◎';   // 💎 TON · ◎ Solana
+        const bal = francBalance ? Number(francBalance).toLocaleString() : '?';
+        connectedSub=T('walletConnectedSub')+' '+sym+' · '+bal+' $FRANC';
+      }
       statusEl.innerHTML=
         '<span style="font-size:26px">&#x1F513;</span>'+
         '<div>'+
           '<div style="color:#4ade80;font-family:Bangers,cursive;letter-spacing:2px;font-size:17px">'+T('walletConnected')+'</div>'+
-          '<div style="color:#86efac;font-size:11px;font-weight:normal;margin-top:2px">'+T('walletConnectedSub')+'</div>'+
+          '<div style="color:#86efac;font-size:11px;font-weight:normal;margin-top:2px">'+connectedSub+'</div>'+
         '</div>';
     } else {
       // État non connecté : fond brun/orange, cadenas, texte doré comme screenshot
@@ -2223,7 +2234,22 @@ async function detectFranc(){
     });
     if(res.ok){
       const d=await res.json();
-      hasFranc=d.hasFranc||false;
+      walletLinked=!!(d&&d.walletLinked);
+
+      // Verdict de déblocage : nouveau backend → d.unlocked,
+      // ancien backend → fallback hasFranc. Les deux marchent.
+      hasFranc=!!(d&&(d.unlocked??(d.walletLinked&&d.hasFranc)));
+
+      // Raison du déblocage : "solana" | "ton" | "stars" | null
+      unlockReason=(d&&d.reason)||(hasFranc?'solana':null);
+
+      // Solde réel (0 pour un déblocage via Stars)
+      francBalance=hasFranc?Number(d.balance||0):0;
+
+      localStorage.setItem('flc_holder',JSON.stringify(hasFranc));
+      localStorage.setItem('flc_balance',String(francBalance));
+      localStorage.setItem('flc_walletLinked',JSON.stringify(walletLinked));
+      localStorage.setItem('flc_reason',unlockReason||'');
     }
   }catch(e){hasFranc=false;}
   MAX_LIVES=hasFranc?10:1;
