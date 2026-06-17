@@ -36,10 +36,7 @@ Simply open `index.html` in any modern browser.
 | 10+ | Smart homing pirate ships |
 | 11+ | 💀 SUDDEN DEATH — unlimited, 2× pirate boats |
 
-## 💎 $FRANC Mode
-
-Click **"PLAY with $FRANC"** to activate:
-- Next bonus indicator displayed in-game
+## LICENCE
 
 © 2026 [$FRANC by FRANCIS LE COQ]. Tous droits réservés.
 
